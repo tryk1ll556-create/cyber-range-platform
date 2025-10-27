@@ -14,3 +14,10 @@
 - VS Code: https://code.visualstudio.com/
 - Git: https://git-scm.com/
 - Python: https://python.org/
+
+## Необходимые расширения VS Code:
+- **Live Share** (Microsoft) - для совместного редактирования
+- **Python** (Microsoft) - для работы с Python кодом
+- **Thunder Client** - для тестирования API
+
+Установка: VS Code → Extensions (Ctrl+Shift+X) → найти по имени → Install
