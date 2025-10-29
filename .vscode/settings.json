@@ -1,0 +1,7 @@
+{
+    "python.analysis.extraPaths": [
+        "./detector/src",
+        "./detector/src/detectors",
+        "./detector/src/database"
+    ]
+}
