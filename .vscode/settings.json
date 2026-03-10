@@ -1,7 +1,8 @@
 {
-    "python.analysis.extraPaths": [
-        "./detector/src",
-        "./detector/src/detectors",
-        "./detector/src/database"
-    ]
+  "editor.formatOnSave": true,
+  "python.analysis.typeCheckingMode": "basic",
+  "editor.defaultFormatter": "ms-python.black-formatter",
+  "python.formatting.provider": "black",
+  "css.lint.unknownAtRules": "ignore",
+  "css.customData": [".vscode/tailwind.json"]
 }

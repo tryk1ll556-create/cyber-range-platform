@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { sandboxService } from './services/sandboxService';
 import Header from './components/common/Header';
 import Navigation from './components/common/Navigation';
 import ChallengesList from './components/challenges/ChallengesList';
 import SandboxesList from './components/sandboxes/SandboxesList';
+import Profile from './pages/Profile';
 import './styles/index.css';
 
-function App() {
+function AppContent() {
   const [sandboxes, setSandboxes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('challenges');
+  const location = useLocation();
 
   const startSandbox = async (challengeType) => {
     setIsLoading(true);
@@ -34,8 +37,12 @@ function App() {
     }
   };
 
+  if (location.pathname === '/profile') {
+    return <Profile />;
+  }
+
   return (
-    <div className="App">
+    <>
       <Header />
       
       <Navigation 
@@ -59,7 +66,15 @@ function App() {
           />
         )}
       </main>
-    </div>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 

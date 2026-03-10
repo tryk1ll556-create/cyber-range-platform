@@ -1,13 +1,63 @@
-body {
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cyber-bg: #0a0f1e;
+  --cyber-card: #141b2b;
+  --cyber-border: #2a3a5e;
+  --cyber-neon: #00f0ff;
+  --cyber-neon-pink: #ff3b9c;
+  --cyber-text: #e0e0e0;
+  --cyber-glow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+* {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--cyber-bg);
+  color: var(--cyber-text);
+  font-family: 'Fira Code', monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+  min-height: 100vh;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: 'Fira Code', monospace;
+}
+
+/* Кибер-классы для Tailwind */
+@layer components {
+  .cyber-card {
+    @apply bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6 
+           hover:border-[#00f0ff] hover:shadow-[0_0_15px_#00f0ff] 
+           transition-all duration-300;
+  }
+
+  .cyber-btn {
+    @apply bg-transparent border-2 border-[#00f0ff] text-[#00f0ff] 
+           px-6 py-2 rounded-lg font-mono font-semibold 
+           hover:bg-[#00f0ff] hover:text-black transition-all;
+  }
+
+  .cyber-btn-danger {
+    @apply border-[#ff3b9c] text-[#ff3b9c] 
+           hover:bg-[#ff3b9c] hover:text-black;
+  }
+
+  .cyber-header {
+    @apply bg-[#0f1625] border-b border-[#2a3a5e] py-4 px-6;
+  }
+
+  .cyber-text-neon {
+    @apply text-[#00f0ff] drop-shadow-[0_0_8px_#00f0ff];
+  }
 }
