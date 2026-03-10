@@ -1,0 +1,17 @@
+{
+    "version": 1.1,
+    "atDirectives": [
+      {
+        "name": "@tailwind",
+        "description": "Use @tailwind to insert Tailwind's base, components, utilities and variants."
+      },
+      {
+        "name": "@apply",
+        "description": "Use @apply to inline utility classes into custom CSS."
+      },
+      {
+        "name": "@layer",
+        "description": "Use @layer to tell Tailwind which layer a custom style belongs to."
+      }
+    ]
+  }

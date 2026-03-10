@@ -1,51 +1,38 @@
 #!/usr/bin/env python3
 """
-ГЛАВНЫЙ МОДУЛЬ API СИСТЕМЫ ДЕТЕКТИРОВАНИЯ АТАК
-Production-архитектура с Multi-Stage Detection Pipeline
+Cyber Range Detection Engine
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 
 from services.detection_pipeline import DetectionPipeline
+from services.attack_session_tracker import AttackSessionTracker
+from services.attack_timeline import AttackTimeline
 from database.db_manager import DatabaseManager
 
 
-# =====================================================
-# FASTAPI APP
-# =====================================================
+app = FastAPI(title="Cyber Range Attack Detection Engine", version="2.6.0")
 
-app = FastAPI(
-    title="Cyber Range Attack Detection Engine",
-    version="2.1.0",
-    description="Модульная система интеллектуального детектирования атак (Multi-Stage)",
-)
-
-
-# =====================================================
-# REQUEST MODEL
-# =====================================================
+templates = Jinja2Templates(directory="templates")
 
 
 class AnalyzeRequest(BaseModel):
+
     method: str
     url: str
     params: Dict[str, Any] = {}
+
     headers: Optional[Dict[str, str]] = None
+
     sandbox_id: Optional[str] = None
-
-
-# =====================================================
-# RISK SCORING ENGINE
-# =====================================================
+    attacker_id: Optional[str] = "anonymous"
 
 
 class RiskScoringEngine:
-    """
-    Центральный механизм вычисления итогового уровня риска.
-    Учитывает multi_vector и behavioral_confirmed.
-    """
 
     risk_weights = {
         "LOW": 1,
@@ -56,23 +43,23 @@ class RiskScoringEngine:
 
     @classmethod
     def calculate_risk(cls, detections: List[Dict[str, Any]]) -> str:
+
         if not detections:
             return "LOW"
 
         max_score = 0
 
         for detection in detections:
-            base_score = cls.risk_weights.get(detection["risk_level"], 1)
 
-            # Усиление за multi-vector атаку
+            score = cls.risk_weights.get(detection["risk_level"], 1)
+
             if detection.get("multi_vector"):
-                base_score += 1
+                score += 1
 
-            # Усиление за подтверждённую эксплуатацию
             if detection.get("behavioral_confirmed"):
-                base_score = 4  # автоматически CRITICAL
+                score = 4
 
-            max_score = max(max_score, base_score)
+            max_score = max(max_score, score)
 
         for level, score in cls.risk_weights.items():
             if score == min(max_score, 4):
@@ -81,16 +68,15 @@ class RiskScoringEngine:
         return "LOW"
 
 
-# =====================================================
-# CORE ENGINE
-# =====================================================
-
-
 class CyberRangeDetector:
 
     def __init__(self):
+
         self.pipeline = DetectionPipeline()
+        self.session_tracker = AttackSessionTracker()
+        self.timeline = AttackTimeline()
         self.db_manager = DatabaseManager()
+
         self.stats = {
             "total_requests": 0,
             "detected_attacks": 0,
@@ -104,90 +90,80 @@ class CyberRangeDetector:
         method: str,
         url: str,
         params: Dict[str, Any],
-        sandbox_id: Optional[str] = None,
+        sandbox_id: Optional[str],
+        attacker_id: str,
+        ip_address: str,
+        user_agent: str,
     ) -> Dict[str, Any]:
 
         self.stats["total_requests"] += 1
 
-        # === Формирование пути к логам песочницы ===
-        log_file_path = None
-        if sandbox_id:
-            log_file_path = f"../../sandboxes/{sandbox_id}/logs/access.log"
+        detections = self.pipeline.analyze(method, url, params)
 
-        # === Запуск multi-stage pipeline ===
-        detections = self.pipeline.analyze(
-            method,
-            url,
-            params,
-            log_file_path=log_file_path,
-        )
+        self.session_tracker.update_session(attacker_id, detections)
 
-        # === Подсчёт статистики ===
+        session_analysis = self.session_tracker.analyze_session(attacker_id)
+
         if detections:
+
             self.stats["detected_attacks"] += 1
+
             self.stats["sql_injections"] += len(
                 [d for d in detections if d["type"] == "SQL_INJECTION"]
             )
+
             self.stats["xss_attacks"] += len(
                 [d for d in detections if d["type"] == "XSS"]
             )
+
             self.stats["path_traversals"] += len(
                 [d for d in detections if d["type"] == "PATH_TRAVERSAL"]
             )
 
-        # === Сохранение в БД ===
         request_id = self.db_manager.save_request(method, url, params, sandbox_id)
 
         if detections:
             self.db_manager.save_detections(request_id, detections)
 
-        self.db_manager.update_statistics(
-            {
-                "total_requests": 1,
-                "detected_attacks": 1 if detections else 0,
-                "sql_injections": len(
-                    [d for d in detections if d["type"] == "SQL_INJECTION"]
-                ),
-                "xss_attacks": len([d for d in detections if d["type"] == "XSS"]),
-                "path_traversals": len(
-                    [d for d in detections if d["type"] == "PATH_TRAVERSAL"]
-                ),
-            }
-        )
-
-        # === Risk Scoring (Adaptive) ===
         overall_risk = RiskScoringEngine.calculate_risk(detections)
+
+        self.timeline.record_event(
+            attacker_id, ip_address, user_agent, detections, overall_risk
+        )
 
         return {
             "request_id": request_id,
             "overall_risk": overall_risk,
-            "total_detections": len(detections),
+            "ip_address": ip_address,
+            "user_agent": user_agent,
             "detections": detections,
+            "attack_session": session_analysis,
         }
 
     def get_stats(self):
         return self.stats
 
+    def get_timeline(self):
+        return self.timeline.get_timeline()
 
-# =====================================================
-# INITIALIZATION
-# =====================================================
 
 detector_engine = CyberRangeDetector()
 
 
-# =====================================================
-# API ENDPOINTS
-# =====================================================
-
-
 @app.post("/analyze")
-def analyze(request: AnalyzeRequest):
+def analyze(data: AnalyzeRequest, request: Request):
+
+    ip_address = request.client.host
+    user_agent = request.headers.get("user-agent", "unknown")
+
     return detector_engine.analyze_request(
-        method=request.method,
-        url=request.url,
-        params=request.params,
-        sandbox_id=request.sandbox_id,
+        method=data.method,
+        url=data.url,
+        params=data.params,
+        sandbox_id=data.sandbox_id,
+        attacker_id=data.attacker_id,
+        ip_address=ip_address,
+        user_agent=user_agent,
     )
 
 
@@ -196,8 +172,16 @@ def stats():
     return detector_engine.get_stats()
 
 
+@app.get("/timeline")
+def timeline():
+    return detector_engine.get_timeline()
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+
 @app.get("/")
 def root():
-    return {
-        "message": "Cyber Range Detection Engine v2.1 работает (Multi-Stage Active)"
-    }
+    return {"message": "Cyber Range Detection Engine running"}
