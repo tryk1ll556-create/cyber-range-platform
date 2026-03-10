@@ -23,7 +23,7 @@ const ChallengesList = ({ onStartSandbox, isLoading }) => {
               {isLoading ? 'Запуск...' : 'Начать задание'}
             </button>
           </div>
-        ))}
+        ))} 
       </div>
     </section>
   );
