@@ -1,242 +1,203 @@
 #!/usr/bin/env python3
 """
-ГЛАВНЫЙ МОДУЛЬ СИСТЕМЫ ДЕТЕКТИРОВАНИЯ АТАК
+ГЛАВНЫЙ МОДУЛЬ API СИСТЕМЫ ДЕТЕКТИРОВАНИЯ АТАК
+Production-архитектура с Multi-Stage Detection Pipeline
 """
 
-# ПРАВИЛЬНЫЕ ИМПОРТЫ
-from detectors.sql_injection import SQLInjectionDetector
-from detectors.xss_detector import XSSDetector
-from detectors.path_traversal import PathTraversalDetector
+from fastapi import FastAPI
+from pydantic import BaseModel
+from typing import Dict, Any, Optional, List
+
+from services.detection_pipeline import DetectionPipeline
 from database.db_manager import DatabaseManager
 
-from typing import Dict, Any, List
-import json
+
+# =====================================================
+# FASTAPI APP
+# =====================================================
+
+app = FastAPI(
+    title="Cyber Range Attack Detection Engine",
+    version="2.1.0",
+    description="Модульная система интеллектуального детектирования атак (Multi-Stage)",
+)
+
+
+# =====================================================
+# REQUEST MODEL
+# =====================================================
+
+
+class AnalyzeRequest(BaseModel):
+    method: str
+    url: str
+    params: Dict[str, Any] = {}
+    headers: Optional[Dict[str, str]] = None
+    sandbox_id: Optional[str] = None
+
+
+# =====================================================
+# RISK SCORING ENGINE
+# =====================================================
+
+
+class RiskScoringEngine:
+    """
+    Центральный механизм вычисления итогового уровня риска.
+    Учитывает multi_vector и behavioral_confirmed.
+    """
+
+    risk_weights = {
+        "LOW": 1,
+        "MEDIUM": 2,
+        "HIGH": 3,
+        "CRITICAL": 4,
+    }
+
+    @classmethod
+    def calculate_risk(cls, detections: List[Dict[str, Any]]) -> str:
+        if not detections:
+            return "LOW"
+
+        max_score = 0
+
+        for detection in detections:
+            base_score = cls.risk_weights.get(detection["risk_level"], 1)
+
+            # Усиление за multi-vector атаку
+            if detection.get("multi_vector"):
+                base_score += 1
+
+            # Усиление за подтверждённую эксплуатацию
+            if detection.get("behavioral_confirmed"):
+                base_score = 4  # автоматически CRITICAL
+
+            max_score = max(max_score, base_score)
+
+        for level, score in cls.risk_weights.items():
+            if score == min(max_score, 4):
+                return level
+
+        return "LOW"
+
+
+# =====================================================
+# CORE ENGINE
+# =====================================================
+
 
 class CyberRangeDetector:
-    """Основной класс системы детектирования"""
-    
+
     def __init__(self):
-        self.sql_detector = SQLInjectionDetector()
-        self.xss_detector = XSSDetector()
-        self.path_traversal_detector = PathTraversalDetector()
+        self.pipeline = DetectionPipeline()
         self.db_manager = DatabaseManager()
-        
         self.stats = {
-            'total_requests': 0,
-            'detected_attacks': 0,
-            'sql_injections': 0,
-            'xss_attacks': 0,
-            'path_traversals': 0
+            "total_requests": 0,
+            "detected_attacks": 0,
+            "sql_injections": 0,
+            "xss_attacks": 0,
+            "path_traversals": 0,
         }
-    
-    def analyze_request(self, method: str, url: str, params: Dict[str, Any], headers: Dict[str, str] = None, sandbox_id: str = None) -> Dict[str, Any]:
-        """Анализирует HTTP запрос на различные атаки"""
-        self.stats['total_requests'] += 1
-        
-        all_detections = []
-        
-        # Анализ SQL-инъекций
-        sql_detections = self.sql_detector.analyze_http_request(method, url, params)
-        all_detections.extend(sql_detections)
-        
-        # Анализ XSS
-        for param_name, param_value in params.items():
-            if isinstance(param_value, str):
-                xss_detections = self.xss_detector.detect(param_value)
-                for detection in xss_detections:
-                    detection['location'] = f'PARAM_{param_name}'
-                    all_detections.append(detection)
-        
-        # Анализ URL на XSS
-        xss_url_detections = self.xss_detector.detect(url)
-        for detection in xss_url_detections:
-            detection['location'] = 'URL'
-            all_detections.append(detection)
-        
-        # Анализ Path Traversal
-        for param_name, param_value in params.items():
-            if isinstance(param_value, str):
-                path_detections = self.path_traversal_detector.detect(param_value)
-                for detection in path_detections:
-                    detection['location'] = f'PARAM_{param_name}'
-                    all_detections.append(detection)
-        
-        path_url_detections = self.path_traversal_detector.detect(url)
-        for detection in path_url_detections:
-            detection['location'] = 'URL'
-            all_detections.append(detection)
-        
-        # Сохраняем запрос и обнаружения в базу данных
+
+    def analyze_request(
+        self,
+        method: str,
+        url: str,
+        params: Dict[str, Any],
+        sandbox_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+
+        self.stats["total_requests"] += 1
+
+        # === Формирование пути к логам песочницы ===
+        log_file_path = None
+        if sandbox_id:
+            log_file_path = f"../../sandboxes/{sandbox_id}/logs/access.log"
+
+        # === Запуск multi-stage pipeline ===
+        detections = self.pipeline.analyze(
+            method,
+            url,
+            params,
+            log_file_path=log_file_path,
+        )
+
+        # === Подсчёт статистики ===
+        if detections:
+            self.stats["detected_attacks"] += 1
+            self.stats["sql_injections"] += len(
+                [d for d in detections if d["type"] == "SQL_INJECTION"]
+            )
+            self.stats["xss_attacks"] += len(
+                [d for d in detections if d["type"] == "XSS"]
+            )
+            self.stats["path_traversals"] += len(
+                [d for d in detections if d["type"] == "PATH_TRAVERSAL"]
+            )
+
+        # === Сохранение в БД ===
         request_id = self.db_manager.save_request(method, url, params, sandbox_id)
-        if all_detections:
-            self.db_manager.save_detections(request_id, all_detections)
-        
-        # Обновляем статистику в базе
-        self.db_manager.update_statistics({
-            'total_requests': 1,
-            'detected_attacks': 1 if all_detections else 0,
-            'sql_injections': len([d for d in all_detections if d['type'] == 'SQL_INJECTION']),
-            'xss_attacks': len([d for d in all_detections if d['type'] == 'XSS']),
-            'path_traversals': len([d for d in all_detections if d['type'] == 'PATH_TRAVERSAL'])
-        })
-        
-        # Обновляем статистику в памяти
-        if all_detections:
-            self.stats['detected_attacks'] += 1
-            self.stats['sql_injections'] += len([d for d in all_detections if d['type'] == 'SQL_INJECTION'])
-            self.stats['xss_attacks'] += len([d for d in all_detections if d['type'] == 'XSS'])
-            self.stats['path_traversals'] += len([d for d in all_detections if d['type'] == 'PATH_TRAVERSAL'])
-        
-        return {
-            'request_info': {
-                'method': method,
-                'url': url,
-                'params_count': len(params),
-                'request_id': request_id
-            },
-            'detections': all_detections,
-            'summary': {
-                'total_detections': len(all_detections),
-                'risk_level': self._calculate_risk_level(all_detections),
-                'recommendation': self._get_recommendation(all_detections)
+
+        if detections:
+            self.db_manager.save_detections(request_id, detections)
+
+        self.db_manager.update_statistics(
+            {
+                "total_requests": 1,
+                "detected_attacks": 1 if detections else 0,
+                "sql_injections": len(
+                    [d for d in detections if d["type"] == "SQL_INJECTION"]
+                ),
+                "xss_attacks": len([d for d in detections if d["type"] == "XSS"]),
+                "path_traversals": len(
+                    [d for d in detections if d["type"] == "PATH_TRAVERSAL"]
+                ),
             }
+        )
+
+        # === Risk Scoring (Adaptive) ===
+        overall_risk = RiskScoringEngine.calculate_risk(detections)
+
+        return {
+            "request_id": request_id,
+            "overall_risk": overall_risk,
+            "total_detections": len(detections),
+            "detections": detections,
         }
-    
-    def _calculate_risk_level(self, detections: List[Dict[str, Any]]) -> str:
-        """Определяет общий уровень риска"""
-        if not detections:
-            return 'LOW'
-        
-        risk_scores = {'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1}
-        max_risk = max([risk_scores.get(d['risk_level'], 0) for d in detections])
-        
-        if max_risk >= 4:
-            return 'CRITICAL'
-        elif max_risk >= 3:
-            return 'HIGH'
-        elif max_risk >= 2:
-            return 'MEDIUM'
-        else:
-            return 'LOW'
-    
-    def _get_recommendation(self, detections: List[Dict[str, Any]]) -> str:
-        """Возвращает рекомендации по безопасности"""
-        if not detections:
-            return "Запрос безопасен"
-        
-        attack_types = set([d['type'] for d in detections])
-        
-        recommendations = []
-        if 'SQL_INJECTION' in attack_types:
-            recommendations.append("Используйте параметризованные запросы для защиты от SQL-инъекций")
-        if 'XSS' in attack_types:
-            recommendations.append("Применяйте экранирование вывода для защиты от XSS")
-        if 'PATH_TRAVERSAL' in attack_types:
-            recommendations.append("Валидируйте входные параметры файловых путей")
-        
-        return "; ".join(recommendations)
-    
-    def get_stats(self) -> Dict[str, Any]:
-        """Возвращает статистику работы системы"""
+
+    def get_stats(self):
         return self.stats
-    
-    def get_database_stats(self) -> Dict[str, Any]:
-        """Возвращает статистику из базы данных"""
-        return self.db_manager.get_daily_stats()
-    
-    def get_recent_detections(self, limit: int = 5) -> List[Dict[str, Any]]:
-        """Возвращает последние обнаруженные атаки из базы данных"""
-        return self.db_manager.get_recent_detections(limit)
 
-# ТЕСТИРОВАНИЕ СИСТЕМЫ
-def main():
-    print("🔍 ЗАПУСК СИСТЕМЫ ДЕТЕКТИРОВАНИЯ АТАК")
-    print("=" * 60)
-    
-    detector = CyberRangeDetector()
-    
-    # Тестовые запросы
-    test_requests = [
-        {
-            'method': 'GET',
-            'url': '/search',
-            'params': {'q': "apple"},
-            'sandbox_id': 'sandbox_001'
-        },
-        {
-            'method': 'GET', 
-            'url': '/login',
-            'params': {'username': "admin' OR 1=1--", 'password': "123"},
-            'sandbox_id': 'sandbox_001'
-        },
-        {
-            'method': 'POST',
-            'url': '/comment',
-            'params': {'text': "<script>alert('XSS')</script>"},
-            'sandbox_id': 'sandbox_002'
-        },
-        {
-            'method': 'GET',
-            'url': '/user?id=1; DROP TABLE users--',
-            'params': {},
-            'sandbox_id': 'sandbox_001'
-        },
-        {
-            'method': 'GET',
-            'url': '/download',
-            'params': {'file': "../../etc/passwd"},
-            'sandbox_id': 'sandbox_003'
-        }
-    ]
-    
-    for i, request in enumerate(test_requests, 1):
-        print(f"\n📨 ТЕСТОВЫЙ ЗАПРОС #{i}:")
-        print(f"   Метод: {request['method']}")
-        print(f"   URL: {request['url']}")
-        print(f"   Параметры: {request['params']}")
-        print(f"   Sandbox ID: {request['sandbox_id']}")
-        
-        result = detector.analyze_request(**request)
-        
-        print(f"\n   📊 РЕЗУЛЬТАТЫ:")
-        print(f"   ID запроса: {result['request_info']['request_id']}")
-        print(f"   Уровень риска: {result['summary']['risk_level']}")
-        print(f"   Обнаружено угроз: {result['summary']['total_detections']}")
-        print(f"   Рекомендация: {result['summary']['recommendation']}")
-        
-        if result['detections']:
-            print(f"\n   🚨 ОБНАРУЖЕННЫЕ АТАКИ:")
-            for detection in result['detections']:
-                print(f"     - {detection['type']} ({detection.get('subtype', 'DIRECT')})")
-                print(f"       Риск: {detection['risk_level']} | Локация: {detection['location']}")
-    
-    # Вывод статистики из памяти
-    print("\n" + "=" * 60)
-    print("📈 СТАТИСТИКА РАБОТЫ СИСТЕМЫ (в памяти):")
-    stats = detector.get_stats()
-    print(f"   Всего запросов: {stats['total_requests']}")
-    print(f"   Запросов с атаками: {stats['detected_attacks']}")
-    print(f"   SQL-инъекций: {stats['sql_injections']}")
-    print(f"   XSS атак: {stats['xss_attacks']}")
-    print(f"   Path Traversal атак: {stats['path_traversals']}")
-    
-    # Вывод статистики из базы данных
-    print("\n📊 СТАТИСТИКА ИЗ БАЗЫ ДАННЫХ (за сегодня):")
-    db_stats = detector.get_database_stats()
-    print(f"   Всего запросов: {db_stats['total_requests']}")
-    print(f"   Запросов с атаками: {db_stats['detected_attacks']}")
-    print(f"   SQL-инъекций: {db_stats['sql_injections']}")
-    print(f"   XSS атак: {db_stats['xss_attacks']}")
-    print(f"   Path Traversal атак: {db_stats['path_traversals']}")
-    
-    # Вывод последних обнаружений из базы
-    print("\n🕒 ПОСЛЕДНИЕ ОБНАРУЖЕННЫЕ АТАКИ:")
-    recent_detections = detector.get_recent_detections(3)
-    for detection in recent_detections:
-        print(f"   - {detection['method']} {detection['url']}")
-        print(f"     {detection['type']} ({detection['subtype']}) | Риск: {detection['risk_level']}")
-    
-    print("=" * 60)
 
-if __name__ == "__main__":
-    main()
+# =====================================================
+# INITIALIZATION
+# =====================================================
+
+detector_engine = CyberRangeDetector()
+
+
+# =====================================================
+# API ENDPOINTS
+# =====================================================
+
+
+@app.post("/analyze")
+def analyze(request: AnalyzeRequest):
+    return detector_engine.analyze_request(
+        method=request.method,
+        url=request.url,
+        params=request.params,
+        sandbox_id=request.sandbox_id,
+    )
+
+
+@app.get("/stats")
+def stats():
+    return detector_engine.get_stats()
+
+
+@app.get("/")
+def root():
+    return {
+        "message": "Cyber Range Detection Engine v2.1 работает (Multi-Stage Active)"
+    }

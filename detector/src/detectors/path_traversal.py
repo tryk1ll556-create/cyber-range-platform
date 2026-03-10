@@ -1,9 +1,14 @@
 import re
 from typing import Dict, Any, List
+from .base_detector import BaseDetector
 
-class PathTraversalDetector:
-    """Детектор Path Traversal атак"""
-    
+
+class PathTraversalDetector(BaseDetector):
+    """
+    Детектор Path Traversal атак.
+    Реализует унифицированный интерфейс BaseDetector.
+    """
+
     def __init__(self):
         self.patterns = [
             r"\.\./",
@@ -12,37 +17,33 @@ class PathTraversalDetector:
             r"\.\.%5c",
             r"etc/passwd",
             r"windows/win\.ini",
-            r"\.\.%00"
+            r"\.\.%00",
         ]
-    
-    def detect(self, text: str) -> List[Dict[str, Any]]:
-        """Обнаруживает Path Traversal в тексте"""
+
+    def get_detector_name(self) -> str:
+        return "PathTraversalDetector"
+
+    def detect(self, input_data: str) -> List[Dict[str, Any]]:
+        """
+        Унифицированный метод обнаружения Path Traversal.
+        """
         detections = []
-        
+
+        if not isinstance(input_data, str):
+            return detections
+
         for pattern in self.patterns:
-            if re.search(pattern, text, re.IGNORECASE):
+            if re.search(pattern, input_data, re.IGNORECASE):
                 detection = {
-                    'type': 'PATH_TRAVERSAL',
-                    'pattern': pattern,
-                    'input_sample': text[:100],
-                    'risk_level': 'HIGH',
-                    'confidence': 'MEDIUM'
+                    "type": "PATH_TRAVERSAL",
+                    "subtype": "DIRECTORY_TRAVERSAL",
+                    "pattern": pattern,
+                    "input_sample": input_data[:200],
+                    "risk_level": "HIGH",
+                    "confidence": "MEDIUM",
+                    "detector": self.get_detector_name(),
                 }
                 detections.append(detection)
-        
-        return detections
+                break  # достаточно одного совпадения
 
-# Пример использования
-if __name__ == "__main__":
-    detector = PathTraversalDetector()
-    test_cases = [
-        "../../etc/passwd",
-        "..\\windows\\win.ini",
-        "normal_file.txt"
-    ]
-    
-    for test in test_cases:
-        print(f"Анализируем: {test}")
-        results = detector.detect(test)
-        for result in results:
-            print(f"  🚨 Обнаружено: {result['type']}")
+        return detections
