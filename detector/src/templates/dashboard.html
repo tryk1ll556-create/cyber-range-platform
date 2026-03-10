@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Cyber Range SOC Dashboard</title>
+
+<style>
+
+body{
+    background:#0f172a;
+    color:white;
+    font-family:Arial;
+    padding:30px;
+}
+
+h1{
+    color:#38bdf8;
+    margin-bottom:25px;
+}
+
+.container{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:20px;
+}
+
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 0 10px rgba(0,0,0,0.5);
+}
+
+.feed-item{
+    border-bottom:1px solid #334155;
+    padding:10px 0;
+}
+
+.low{color:#22c55e}
+.medium{color:#facc15}
+.high{color:#f97316}
+.critical{color:#ef4444}
+
+.score{
+    font-size:40px;
+    font-weight:bold;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>🛡 Cyber Range SOC Dashboard</h1>
+
+<div class="container">
+
+<div class="card">
+<h2>📊 System Statistics</h2>
+<div id="stats"></div>
+</div>
+
+<div class="card">
+<h2>🎯 Threat Score</h2>
+<div id="score" class="score">0</div>
+</div>
+
+<div class="card">
+<h2>👾 Top Attackers</h2>
+<div id="attackers"></div>
+</div>
+
+<div class="card">
+<h2>🔴 Live Attack Feed</h2>
+<div id="feed"></div>
+</div>
+
+</div>
+
+<script>
+
+function calculateThreatScore(events){
+
+    let score = 0
+
+    events.forEach(e => {
+
+        if(e.risk === "LOW") score += 1
+        if(e.risk === "MEDIUM") score += 3
+        if(e.risk === "HIGH") score += 6
+        if(e.risk === "CRITICAL") score += 10
+
+    })
+
+    return score
+}
+
+function attackEmoji(type){
+
+    if(type.includes("SQL")) return "💉"
+    if(type.includes("XSS")) return "⚡"
+    if(type.includes("PATH")) return "📂"
+
+    return "⚠️"
+}
+
+async function loadStats(){
+
+    let res = await fetch("/stats")
+    let data = await res.json()
+
+    document.getElementById("stats").innerHTML = `
+    📥 Total Requests: ${data.total_requests}<br>
+    🚨 Detected Attacks: ${data.detected_attacks}<br>
+    💉 SQL Injection: ${data.sql_injections}<br>
+    ⚡ XSS: ${data.xss_attacks}<br>
+    📂 Path Traversal: ${data.path_traversals}
+    `
+}
+
+async function loadTimeline(){
+
+    let res = await fetch("/timeline")
+    let events = await res.json()
+
+    let feed = document.getElementById("feed")
+    let attackers = {}
+
+    feed.innerHTML=""
+
+    events.reverse().forEach(e => {
+
+        let riskClass = e.risk.toLowerCase()
+
+        let emoji = "⚠️"
+
+        if(e.detections.length > 0){
+            emoji = attackEmoji(e.detections[0])
+        }
+
+        feed.innerHTML += `
+        <div class="feed-item">
+        ${emoji} [${e.timestamp}]
+        <b>${e.attacker_id}</b>
+        (${e.ip_address})
+        <br>
+        Agent: ${e.user_agent}
+        <br>
+        <span class="${riskClass}">${e.risk}</span>
+        (${e.detections.join(", ")})
+        </div>
+        `
+
+        if(!attackers[e.attacker_id]){
+            attackers[e.attacker_id] = 0
+        }
+
+        attackers[e.attacker_id]++
+
+    })
+
+    let attackersDiv = document.getElementById("attackers")
+
+    attackersDiv.innerHTML=""
+
+    Object.entries(attackers)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,5)
+        .forEach(a => {
+
+        attackersDiv.innerHTML += `
+        👤 ${a[0]} — ${a[1]} attacks<br>
+        `
+    })
+
+    let score = calculateThreatScore(events)
+
+    document.getElementById("score").innerText = score
+
+}
+
+async function update(){
+
+    await loadStats()
+    await loadTimeline()
+
+}
+
+update()
+
+setInterval(update,2000)
+
+</script>
+
+</body>
+
+</html>

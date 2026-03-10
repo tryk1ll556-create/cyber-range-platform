@@ -212,22 +212,17 @@ def health_check(db: Session = Depends(get_db)):
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     """Регистрация нового пользователя"""
 
-    # Проверяем, нет ли уже такого пользователя
-    existing = (
-        db.query(UserModel)
-        .filter(
-            (UserModel.username == user_data.username)
-            | (UserModel.email == user_data.email)
-        )
-        .first()
+   # Проверяем, нет ли уже такого пользователя
+existing = db.query(UserModel).filter(
+    (UserModel.username == user_data.username) | 
+    (UserModel.email == user_model.email)
+).first()
+
+if existing:
+    raise HTTPException(
+        status_code=400,
+        detail="Пользователь с таким именем или email уже существует"
     )
-
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Пользователь с таким именем или email уже существует",
-        )
-
   # Создаем нового пользователя
 new_user = UserModel(
     id=str(uuid.uuid4())[:8],
