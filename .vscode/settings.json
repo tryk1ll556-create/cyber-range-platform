@@ -3,5 +3,6 @@
         "./detector/src",
         "./detector/src/detectors",
         "./detector/src/database"
-    ]
+    ],
+    "css.lint.unknownAtRules": "ignore"
 }
