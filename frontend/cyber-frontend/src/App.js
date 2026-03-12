@@ -6,22 +6,33 @@ import Navigation from './components/common/Navigation';
 import ChallengesList from './components/challenges/ChallengesList';
 import SandboxesList from './components/sandboxes/SandboxesList';
 import Profile from './pages/Profile';
+import Modal from './components/common/Modal';
 import './styles/index.css';
 
 function AppContent() {
   const [sandboxes, setSandboxes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('challenges');
+  const [modal, setModal] = useState({ 
+    isOpen: false, 
+    title: '', 
+    message: '', 
+    type: 'info' 
+  });
   const location = useLocation();
+
+  const showModal = (title, message, type = 'info') => {
+    setModal({ isOpen: true, title, message, type });
+  };
 
   const startSandbox = async (challengeType) => {
     setIsLoading(true);
     try {
       const newSandbox = await sandboxService.start(challengeType);
       setSandboxes(prev => [...prev, newSandbox]);
-      alert(`Песочница для ${challengeType} запущена!`);
+      showModal('Успех', `Песочница для ${challengeType} запущена!`, 'success');
     } catch (error) {
-      alert('Ошибка при запуске песочницы');
+      showModal('Ошибка', 'Не удалось запустить песочницу', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -31,9 +42,9 @@ function AppContent() {
     try {
       await sandboxService.stop(sandboxId);
       setSandboxes(prev => prev.filter(s => s.sandbox_id !== sandboxId));
-      alert('Песочница остановлена');
+      showModal('Успех', 'Песочница остановлена', 'success');
     } catch (error) {
-      alert('Ошибка при остановке песочницы');
+      showModal('Ошибка', 'Не удалось остановить песочницу', 'error');
     }
   };
 
@@ -63,6 +74,14 @@ function AppContent() {
           />
         )}
       </main>
+      
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ ...modal, isOpen: false })}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
     </>
   );
 }

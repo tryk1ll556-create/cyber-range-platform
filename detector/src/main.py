@@ -6,6 +6,7 @@ Cyber Range Detection Engine
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 
@@ -16,6 +17,15 @@ from database.db_manager import DatabaseManager
 
 
 app = FastAPI(title="Cyber Range Attack Detection Engine", version="2.6.0")
+
+# Разрешаем запросы с фронтенда (порт 3000)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 templates = Jinja2Templates(directory="templates")
 
@@ -185,3 +195,8 @@ def dashboard(request: Request):
 @app.get("/")
 def root():
     return {"message": "Cyber Range Detection Engine running"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)

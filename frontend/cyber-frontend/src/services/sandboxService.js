@@ -1,17 +1,37 @@
-// Заглушка API - потом заменим на реальное
+import { backendApi } from './backendApi';
+
 export const sandboxService = {
-    start: async (challengeType) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+  start: async (challengeType) => {
+    // Создаём песочницу с типом задания
+    const result = await backendApi.createSandbox(
+      `Задание: ${challengeType}`,
+      'webapp',
+      'beginner'
+    );
+    
+    // Если создалась — запускаем
+    if (result.id) {
+      await backendApi.startSandbox(result.id);
       return {
-        sandbox_id: `sandbox_${Date.now()}`,
-        url: 'http://localhost:8080',
+        sandbox_id: result.id,
         challenge_type: challengeType,
         status: 'running',
-        created_at: new Date().toISOString()
+        url: result.url,
+        created_at: result.created_at
       };
-    },
-  
-    stop: async (sandboxId) => {
-      return { success: true };
     }
-  };
+    throw new Error('Не удалось создать песочницу');
+  },
+
+  stop: async (sandboxId) => {
+    return backendApi.stopSandbox(sandboxId);
+  },
+
+  getAll: async () => {
+    return backendApi.getAllSandboxes();
+  },
+
+  getLogs: async (sandboxId) => {
+    return backendApi.getLogs(sandboxId);
+  }
+};

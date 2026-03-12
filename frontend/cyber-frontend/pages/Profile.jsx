@@ -1,6 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { detectorApi } from '../services/detectorApi';
+import AttackFeed from '../components/AttackFeed';
 
 const Profile = () => {
+  const [activeTab, setActiveTab] = useState('profile');
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Заглушка пользователя
   const user = {
     name: 'Хакер Студент',
     email: 'student@cyber.local',
@@ -8,62 +16,181 @@ const Profile = () => {
     points: 2450,
     completedTasks: 12,
     rank: 'Белый хакер',
-    badges: ['SQL Injection', 'XSS Master', 'Recon']
+    badges: ['SQL Injection', 'XSS Master', 'Path Traversal']
   };
 
+  // Загрузка статистики
+  useEffect(() => {
+    if (activeTab === 'stats') {
+      setLoading(true);
+      detectorApi.getStats()
+        .then(data => {
+          setStats(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('Ошибка загрузки статистики:', err);
+          setLoading(false);
+        });
+    }
+  }, [activeTab]);
+
+  const StatCard = ({ label, value }) => (
+    <div className="bg-[#1a2332] p-4 rounded-lg border border-[#2a3a5e] text-center">
+      <div className="text-2xl font-bold text-[#00f0ff] mb-1">{value}</div>
+      <div className="text-xs text-gray-400">{label}</div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-[#0a0f1e] p-6">
+    <div className="min-h-screen bg-[#0a0f1e] p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="cyber-card mb-6">
-          <div className="flex items-center space-x-6">
-            <div className="w-24 h-24 rounded-full bg-[#2a3a5e] flex items-center justify-center border-4 border-[#00f0ff] shadow-[0_0_20px_#00f0ff]">
-              <span className="text-4xl">👨‍💻</span>
+        
+        {/* Кнопка назад */}
+        <div className="mb-4">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 bg-[#1a2332] border border-[#2a3a5e] text-white px-4 py-2 rounded-lg hover:border-[#00f0ff] hover:text-[#00f0ff] transition-all"
+          >
+            ← На главную
+          </Link>
+        </div>
+
+        {/* Шапка профиля */}
+        <div className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6 md:p-8 mb-6 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-[#1a2332] border-4 border-[#00f0ff] shadow-[0_0_20px_#00f0ff] flex items-center justify-center">
+              <span className="text-4xl md:text-5xl">👨‍💻</span>
             </div>
-            
-            <div>
-              <h1 className="text-3xl font-bold cyber-text-neon mb-2">{user.name}</h1>
-              <p className="text-gray-400">{user.email}</p>
-              <div className="flex gap-4 mt-2">
-                <span className="bg-[#1a2332] px-3 py-1 rounded-full text-sm border border-[#2a3a5e]">
+
+            <div className="text-center md:text-left flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-[#00f0ff] drop-shadow-[0_0_8px_#00f0ff] mb-2">
+                {user.name}
+              </h1>
+              <p className="text-gray-400 mb-3">{user.email}</p>
+              
+              <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                <span className="bg-[#1a2332] border border-[#2a3a5e] text-xs px-3 py-1 rounded-full">
                   🏆 {user.rank}
                 </span>
-                <span className="bg-[#1a2332] px-3 py-1 rounded-full text-sm border border-[#2a3a5e]">
+                <span className="bg-[#1a2332] border border-[#2a3a5e] text-xs px-3 py-1 rounded-full">
                   📊 Уровень {user.level}
+                </span>
+                <span className="bg-[#1a2332] border border-[#2a3a5e] text-xs px-3 py-1 rounded-full">
+                  ✅ {user.completedTasks} заданий
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="cyber-card text-center">
-            <div className="text-3xl mb-2">⭐</div>
-            <div className="text-2xl font-bold cyber-text-neon">{user.points}</div>
-            <div className="text-gray-400">Всего очков</div>
-          </div>
-          
-          <div className="cyber-card text-center">
-            <div className="text-3xl mb-2">✅</div>
-            <div className="text-2xl font-bold cyber-text-neon">{user.completedTasks}</div>
-            <div className="text-gray-400">Выполнено заданий</div>
-          </div>
-          
-          <div className="cyber-card text-center">
-            <div className="text-3xl mb-2">📈</div>
-            <div className="text-2xl font-bold cyber-text-neon">{Math.round(user.completedTasks / 3)}</div>
-            <div className="text-gray-400">Атак обнаружено</div>
-          </div>
+        {/* Табы */}
+        <div className="flex gap-2 mb-6 border-b border-[#2a3a5e] pb-2 overflow-x-auto">
+          {[
+            { id: 'profile', label: '👤 Профиль' },
+            { id: 'badges', label: '🏅 Достижения' },
+            { id: 'stats', label: '📊 Статистика' },
+            { id: 'feed', label: '⚡ Лента атак' },
+            { id: 'dashboard', label: '📈 Дашборд' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 rounded-lg font-mono transition-all whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-[#00f0ff] text-black shadow-[0_0_10px_#00f0ff]'
+                  : 'text-white hover:bg-[#2a3a5e]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <div className="cyber-card">
-          <h2 className="text-xl font-bold cyber-text-neon mb-4">🏅 Достижения</h2>
-          <div className="flex flex-wrap gap-3">
-            {user.badges.map((badge, i) => (
-              <span key={i} className="bg-[#1a2332] border border-[#00f0ff] text-[#00f0ff] px-4 py-2 rounded-full text-sm">
-                {badge}
-              </span>
-            ))}
-          </div>
+        {/* Контент вкладок */}
+        <div className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6">
+          {activeTab === 'profile' && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">👤 О себе</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-[#1a2332] p-4 rounded-lg border border-[#2a3a5e]">
+                  <div className="text-gray-400 text-sm">Специализация</div>
+                  <div className="text-white font-bold">Web Security</div>
+                </div>
+                <div className="bg-[#1a2332] p-4 rounded-lg border border-[#2a3a5e]">
+                  <div className="text-gray-400 text-sm">Опыт</div>
+                  <div className="text-white font-bold">8 месяцев</div>
+                </div>
+                <div className="bg-[#1a2332] p-4 rounded-lg border border-[#2a3a5e]">
+                  <div className="text-gray-400 text-sm">Команда</div>
+                  <div className="text-white font-bold">Red Team</div>
+                </div>
+                <div className="bg-[#1a2332] p-4 rounded-lg border border-[#2a3a5e]">
+                  <div className="text-gray-400 text-sm">Рейтинг</div>
+                  <div className="text-white font-bold">#156</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'badges' && (
+            <div>
+              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">🏅 Достижения</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {user.badges.map((badge, i) => (
+                  <div key={i} className="bg-[#1a2332] border border-[#2a3a5e] rounded-lg p-4 text-center hover:border-[#00f0ff] transition-all">
+                    <div className="text-3xl mb-2">🏆</div>
+                    <div className="text-sm font-bold text-[#00f0ff]">{badge}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'stats' && (
+            <div>
+              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">📊 Статистика детектора</h2>
+              {loading ? (
+                <div className="text-center py-8 text-gray-400">Загрузка...</div>
+              ) : stats ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <StatCard label="Всего запросов" value={stats.total_requests} />
+                  <StatCard label="Обнаружено атак" value={stats.detected_attacks} />
+                  <StatCard label="SQL инъекции" value={stats.sql_injections} />
+                  <StatCard label="XSS атаки" value={stats.xss_attacks} />
+                  <StatCard label="Path Traversal" value={stats.path_traversals} />
+                  <StatCard 
+                    label="Соотношение атак" 
+                    value={`${stats.detected_attacks && stats.total_requests 
+                      ? ((stats.detected_attacks / stats.total_requests) * 100).toFixed(1) 
+                      : 0}%`} 
+                  />
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  ❌ Не удалось загрузить статистику. Проверь, запущен ли детектор на порту 8001.
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'feed' && (
+            <div>
+              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">⚡ Лента атак</h2>
+              <AttackFeed limit={15} />
+            </div>
+          )}
+
+          {activeTab === 'dashboard' && (
+            <div>
+              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">📈 Дашборд безопасности</h2>
+              <iframe
+                src={detectorApi.getDashboard()}
+                className="w-full h-[600px] rounded-lg border border-[#2a3a5e]"
+                title="SOC Dashboard"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

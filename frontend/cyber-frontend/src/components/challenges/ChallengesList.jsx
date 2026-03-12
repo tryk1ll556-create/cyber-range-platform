@@ -1,5 +1,6 @@
 import React from 'react';
 import { challenges } from '../../data/challenges';
+import Spinner from '../common/Spinner';
 
 const ChallengesList = ({ onStartSandbox, isLoading }) => {
   return (
@@ -37,9 +38,19 @@ const ChallengesList = ({ onStartSandbox, isLoading }) => {
                          px-4 py-2 rounded-lg font-mono font-semibold
                          hover:bg-[#00f0ff] hover:text-black 
                          disabled:opacity-50 disabled:cursor-not-allowed
-                         transition-all duration-300"
+                         transition-all duration-300 flex items-center justify-center gap-2"
             >
-              {isLoading ? '⏳ Запуск...' : '🚀 Начать задание'}
+              {isLoading ? (
+                <>
+                  <Spinner size="w-4 h-4" />
+                  <span>Запуск...</span>
+                </>
+              ) : (
+                <>
+                  <span>🚀</span>
+                  <span>Начать задание</span>
+                </>
+              )}
             </button>
           </div>
         ))}
