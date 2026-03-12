@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../services/api';
+import { detectorApi } from '../services/detectorApi';
+import AttackFeed from '../components/AttackFeed';
 
 const Profile = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   const [stats, setStats] = useState(null);
-  const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Заглушка пользователя (позже заменится на данные из бекенда)
   const user = {
     name: 'Хакер Студент',
     email: 'student@cyber.local',
@@ -25,29 +26,29 @@ const Profile = () => {
     ]
   };
 
+  // Загрузка статистики при открытии вкладки stats
   useEffect(() => {
     if (activeTab === 'stats') {
       setLoading(true);
-      api.getStats()
+      detectorApi.getStats()
         .then(data => {
           setStats(data);
           setLoading(false);
         })
-        .catch(() => setLoading(false));
+        .catch(err => {
+          console.error('Ошибка загрузки статистики:', err);
+          setLoading(false);
+        });
     }
   }, [activeTab]);
 
-  useEffect(() => {
-    if (activeTab === 'timeline') {
-      setLoading(true);
-      api.getTimeline()
-        .then(data => {
-          setTimeline(data);
-          setLoading(false);
-        })
-        .catch(() => setLoading(false));
-    }
-  }, [activeTab]);
+  // Компонент для карточки статистики
+  const StatCard = ({ label, value }) => (
+    <div className="bg-[#1a2332] p-4 rounded-lg border border-[#2a3a5e] text-center">
+      <div className="text-2xl font-bold text-[#00f0ff] mb-1">{value}</div>
+      <div className="text-xs text-gray-400">{label}</div>
+    </div>
+  );
 
   if (!isAuthenticated) {
     return (
@@ -119,6 +120,7 @@ const Profile = () => {
     <div className="min-h-screen bg-[#0a0f1e] p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
         
+        {/* Кнопка назад на главную */}
         <div className="mb-4">
           <Link
             to="/"
@@ -128,6 +130,7 @@ const Profile = () => {
           </Link>
         </div>
 
+        {/* Шапка профиля */}
         <div className="bg-[#141b2b]/80 backdrop-blur-sm border border-[#2a3a5e] rounded-xl p-6 md:p-8 mb-6 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
           <div className="flex justify-end mb-4">
             <button
@@ -179,12 +182,13 @@ const Profile = () => {
           </div>
         </div>
 
+        {/* Табы */}
         <div className="flex gap-2 mb-6 border-b border-[#2a3a5e] pb-2 overflow-x-auto">
           {[
             { id: 'profile', label: '👤 Профиль' },
             { id: 'badges', label: '🏅 Достижения' },
             { id: 'stats', label: '📊 Статистика' },
-            { id: 'timeline', label: '⏱️ Лента атак' },
+            { id: 'feed', label: '⚡ Лента атак' },
             { id: 'dashboard', label: '📈 Дашборд' },
             { id: 'settings', label: '⚙️ Настройки' }
           ].map(tab => (
@@ -202,6 +206,7 @@ const Profile = () => {
           ))}
         </div>
 
+        {/* Контент вкладок */}
         <div className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6">
           {activeTab === 'profile' && (
             <div className="space-y-4">
@@ -243,68 +248,35 @@ const Profile = () => {
 
           {activeTab === 'stats' && (
             <div>
-              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">📊 Статистика системы</h2>
+              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">📊 Статистика детектора</h2>
               {loading ? (
                 <div className="text-center py-8 text-gray-400">Загрузка...</div>
               ) : stats ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-[#1a2332] p-6 rounded-lg border border-[#2a3a5e] text-center">
-                    <div className="text-3xl text-[#00f0ff] mb-2">{stats.total_requests}</div>
-                    <div className="text-gray-400">Всего запросов</div>
-                  </div>
-                  <div className="bg-[#1a2332] p-6 rounded-lg border border-[#2a3a5e] text-center">
-                    <div className="text-3xl text-[#ff3b9c] mb-2">{stats.detected_attacks}</div>
-                    <div className="text-gray-400">Атак обнаружено</div>
-                  </div>
-                  <div className="bg-[#1a2332] p-6 rounded-lg border border-[#2a3a5e] text-center">
-                    <div className="text-3xl text-[#00f0ff] mb-2">{stats.sql_injections}</div>
-                    <div className="text-gray-400">SQL инъекции</div>
-                  </div>
-                  <div className="bg-[#1a2332] p-6 rounded-lg border border-[#2a3a5e] text-center">
-                    <div className="text-3xl text-[#00f0ff] mb-2">{stats.xss_attacks}</div>
-                    <div className="text-gray-400">XSS атаки</div>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <StatCard label="Всего запросов" value={stats.total_requests} />
+                  <StatCard label="Обнаружено атак" value={stats.detected_attacks} />
+                  <StatCard label="SQL инъекции" value={stats.sql_injections} />
+                  <StatCard label="XSS атаки" value={stats.xss_attacks} />
+                  <StatCard label="Path Traversal" value={stats.path_traversals} />
+                  <StatCard 
+                    label="Соотношение атак" 
+                    value={`${stats.detected_attacks && stats.total_requests 
+                      ? ((stats.detected_attacks / stats.total_requests) * 100).toFixed(1) 
+                      : 0}%`} 
+                  />
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-400">Не удалось загрузить статистику</div>
+                <div className="text-center py-8 text-gray-400">
+                  ❌ Не удалось загрузить статистику. Проверь, запущен ли детектор на порту 8001.
+                </div>
               )}
             </div>
           )}
 
-          {activeTab === 'timeline' && (
+          {activeTab === 'feed' && (
             <div>
-              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">⏱️ Лента атак</h2>
-              {loading ? (
-                <div className="text-center py-8 text-gray-400">Загрузка...</div>
-              ) : timeline.length > 0 ? (
-                <div className="space-y-3">
-                  {timeline.map((attack, i) => (
-                    <div key={i} className="bg-[#1a2332] border border-[#2a3a5e] rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="text-sm text-gray-400">{attack.timestamp}</div>
-                          <div className="font-bold text-white">{attack.attacker_id}</div>
-                          <div className="text-xs text-gray-400">{attack.ip_address}</div>
-                        </div>
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          attack.risk === 'HIGH' ? 'bg-red-600' : 'bg-yellow-600'
-                        }`}>
-                          {attack.risk}
-                        </span>
-                      </div>
-                      <div className="mt-2 flex gap-2">
-                        {attack.detections.map((detection, j) => (
-                          <span key={j} className="text-xs bg-[#00f0ff] text-black px-2 py-1 rounded">
-                            {detection}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-400">Нет данных об атаках</div>
-              )}
+              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">⚡ Лента атак</h2>
+              <AttackFeed limit={15} />
             </div>
           )}
 
@@ -312,7 +284,7 @@ const Profile = () => {
             <div>
               <h2 className="text-xl font-bold text-[#00f0ff] mb-4">📈 Дашборд безопасности</h2>
               <iframe
-                src={api.getDashboard()}
+                src={detectorApi.getDashboard()}
                 className="w-full h-[600px] rounded-lg border border-[#2a3a5e]"
                 title="SOC Dashboard"
               />

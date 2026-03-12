@@ -1,13 +1,7 @@
-<<<<<<< HEAD
-=======
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
-
->>>>>>> 55be566130467462af2b60ad13a7263ba866187f
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-<<<<<<< HEAD
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
 
 body {
@@ -17,38 +11,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #0a0f1e;
   color: #e0e0e0;
-=======
-:root {
-  --cyber-bg: #0a0f1e;
-  --cyber-card: #141b2b;
-  --cyber-border: #2a3a5e;
-  --cyber-neon: #00f0ff;
-  --cyber-neon-pink: #ff3b9c;
-  --cyber-text: #e0e0e0;
-  --cyber-glow: 0 0 10px rgba(0, 240, 255, 0.3);
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  background-color: var(--cyber-bg);
-  color: var(--cyber-text);
-  font-family: 'Fira Code', monospace;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.6;
-  min-height: 100vh;
->>>>>>> 55be566130467462af2b60ad13a7263ba866187f
 }
 
 code {
   font-family: 'Fira Code', monospace;
-<<<<<<< HEAD
-=======
+
 }
 
 /* Кибер-классы для Tailwind */
@@ -77,5 +44,5 @@ code {
   .cyber-text-neon {
     @apply text-[#00f0ff] drop-shadow-[0_0_8px_#00f0ff];
   }
->>>>>>> 55be566130467462af2b60ad13a7263ba866187f
+
 }
