@@ -1,8 +1,16 @@
 import React from 'react';
 import { challenges } from '../../data/challenges';
 import Spinner from '../common/Spinner';
+import { useUser } from '../../context/UserContext';
 
 const ChallengesList = ({ onStartSandbox, isLoading }) => {
+  const { addXP } = useUser();
+
+  const handleStart = (challengeId) => {
+    onStartSandbox(challengeId);
+    addXP(25); // +25 XP за задание
+  };
+
   return (
     <section className="max-w-6xl mx-auto px-4 py-8">
       <h2 className="text-3xl font-bold text-center mb-8 text-[#00f0ff] drop-shadow-[0_0_10px_#00f0ff]">
@@ -32,7 +40,7 @@ const ChallengesList = ({ onStartSandbox, isLoading }) => {
             </div>
 
             <button
-              onClick={() => onStartSandbox(challenge.id)}
+              onClick={() => handleStart(challenge.id)}
               disabled={isLoading}
               className="w-full bg-transparent border-2 border-[#00f0ff] text-[#00f0ff] 
                          px-4 py-2 rounded-lg font-mono font-semibold

@@ -1,25 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
 import { detectorApi } from '../services/detectorApi';
 import AttackFeed from '../components/AttackFeed';
 
 const Profile = () => {
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState('profile');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Заглушка пользователя
-  const user = {
-    name: 'Хакер Студент',
-    email: 'student@cyber.local',
-    level: 7,
-    points: 2450,
-    completedTasks: 12,
-    rank: 'Белый хакер',
-    badges: ['SQL Injection', 'XSS Master', 'Path Traversal']
-  };
-
-  // Загрузка статистики
   useEffect(() => {
     if (activeTab === 'stats') {
       setLoading(true);
@@ -35,6 +25,8 @@ const Profile = () => {
     }
   }, [activeTab]);
 
+  const progress = Math.round((user.xp / user.nextLevelXp) * 100);
+
   const StatCard = ({ label, value }) => (
     <div className="bg-[#1a2332] p-4 rounded-lg border border-[#2a3a5e] text-center">
       <div className="text-2xl font-bold text-[#00f0ff] mb-1">{value}</div>
@@ -46,7 +38,6 @@ const Profile = () => {
     <div className="min-h-screen bg-[#0a0f1e] p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
         
-        {/* Кнопка назад */}
         <div className="mb-4">
           <Link
             to="/"
@@ -56,19 +47,31 @@ const Profile = () => {
           </Link>
         </div>
 
-        {/* Шапка профиля */}
         <div className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6 md:p-8 mb-6 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-[#1a2332] border-4 border-[#00f0ff] shadow-[0_0_20px_#00f0ff] flex items-center justify-center">
               <span className="text-4xl md:text-5xl">👨‍💻</span>
             </div>
 
-            <div className="text-center md:text-left flex-1">
+            <div className="text-center md:text-left flex-1 w-full">
               <h1 className="text-2xl md:text-3xl font-bold text-[#00f0ff] drop-shadow-[0_0_8px_#00f0ff] mb-2">
                 {user.name}
               </h1>
               <p className="text-gray-400 mb-3">{user.email}</p>
               
+              <div className="max-w-md mb-3">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-[#00f0ff]">Уровень {user.level}</span>
+                  <span className="text-gray-400">{user.xp} / {user.nextLevelXp} XP</span>
+                </div>
+                <div className="w-full h-2 bg-[#1a2332] rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-[#00f0ff] to-[#ff3b9c] rounded-full transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+
               <div className="flex flex-wrap justify-center md:justify-start gap-2">
                 <span className="bg-[#1a2332] border border-[#2a3a5e] text-xs px-3 py-1 rounded-full">
                   🏆 {user.rank}
@@ -84,7 +87,6 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Табы */}
         <div className="flex gap-2 mb-6 border-b border-[#2a3a5e] pb-2 overflow-x-auto">
           {[
             { id: 'profile', label: '👤 Профиль' },
@@ -107,7 +109,6 @@ const Profile = () => {
           ))}
         </div>
 
-        {/* Контент вкладок */}
         <div className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6">
           {activeTab === 'profile' && (
             <div className="space-y-4">
@@ -136,13 +137,8 @@ const Profile = () => {
           {activeTab === 'badges' && (
             <div>
               <h2 className="text-xl font-bold text-[#00f0ff] mb-4">🏅 Достижения</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {user.badges.map((badge, i) => (
-                  <div key={i} className="bg-[#1a2332] border border-[#2a3a5e] rounded-lg p-4 text-center hover:border-[#00f0ff] transition-all">
-                    <div className="text-3xl mb-2">🏆</div>
-                    <div className="text-sm font-bold text-[#00f0ff]">{badge}</div>
-                  </div>
-                ))}
+              <div className="text-gray-400 text-center py-8">
+                Пока нет достижений. Выполняй задания, чтобы получить их!
               </div>
             </div>
           )}

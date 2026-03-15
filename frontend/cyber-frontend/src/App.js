@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { UserProvider } from './context/UserContext';
 import { sandboxService } from './services/sandboxService';
 import Header from './components/common/Header';
 import Navigation from './components/common/Navigation';
@@ -89,7 +90,9 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <UserProvider>
+        <AppContent />
+      </UserProvider>
     </BrowserRouter>
   );
 }
