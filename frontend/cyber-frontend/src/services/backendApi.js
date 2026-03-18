@@ -1,8 +1,8 @@
 const BACKEND_URL = 'http://localhost:8000';
 
 export const backendApi = {
-  // Создать песочницу
-  createSandbox: async (name, type, difficulty, ownerId = 'student') => {
+  // Песочницы
+  createSandbox: async (name, type, difficulty, ownerId = 'guest') => {
     const res = await fetch(`${BACKEND_URL}/sandboxes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -11,19 +11,16 @@ export const backendApi = {
     return res.json();
   },
 
-  // Все песочницы
   getAllSandboxes: async () => {
     const res = await fetch(`${BACKEND_URL}/sandboxes`);
     return res.json();
   },
 
-  // Одна песочница
   getSandbox: async (id) => {
     const res = await fetch(`${BACKEND_URL}/sandboxes/${id}`);
     return res.json();
   },
 
-  // Запустить
   startSandbox: async (id) => {
     const res = await fetch(`${BACKEND_URL}/sandboxes/${id}/start`, {
       method: 'POST'
@@ -31,7 +28,6 @@ export const backendApi = {
     return res.json();
   },
 
-  // Остановить
   stopSandbox: async (id) => {
     const res = await fetch(`${BACKEND_URL}/sandboxes/${id}/stop`, {
       method: 'POST'
@@ -39,7 +35,6 @@ export const backendApi = {
     return res.json();
   },
 
-  // Удалить
   deleteSandbox: async (id) => {
     const res = await fetch(`${BACKEND_URL}/sandboxes/${id}`, {
       method: 'DELETE'
@@ -53,7 +48,7 @@ export const backendApi = {
     return res.json();
   },
 
-  // Регистрация
+  // Пользователи
   register: async (username, email, password, fullName = '') => {
     const res = await fetch(`${BACKEND_URL}/users/register`, {
       method: 'POST',
@@ -63,9 +58,18 @@ export const backendApi = {
     return res.json();
   },
 
-  // Получить пользователя
   getUser: async (id) => {
     const res = await fetch(`${BACKEND_URL}/users/${id}`);
+    return res.json();
+  },
+
+  getUserProgress: async (id) => {
+    const res = await fetch(`${BACKEND_URL}/users/${id}/progress`);
+    return res.json();
+  },
+
+  getLeaderboard: async () => {
+    const res = await fetch(`${BACKEND_URL}/leaderboard`);
     return res.json();
   }
 };

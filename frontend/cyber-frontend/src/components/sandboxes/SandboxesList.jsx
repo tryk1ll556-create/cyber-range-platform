@@ -11,6 +11,16 @@ const SandboxesList = ({ sandboxes, onStopSandbox }) => {
     );
   }
 
+  const handleGoToSandbox = (url, sandboxId) => {
+    console.log('🔗 Попытка перехода по URL:', url, 'для песочницы:', sandboxId);
+    
+    if (url && typeof url === 'string' && url.startsWith('http')) {
+      window.open(url, '_blank');
+    } else {
+      alert(`Ссылка на песочницу временно недоступна.\nПолученный URL: ${url || 'пусто'}\nОжидается настройка сервера.`);
+    }
+  };
+
   return (
     <section className="max-w-6xl mx-auto px-4 py-8">
       <h2 className="text-3xl font-bold text-center mb-8 text-[#00f0ff] drop-shadow-[0_0_10px_#00f0ff]">
@@ -27,10 +37,14 @@ const SandboxesList = ({ sandboxes, onStopSandbox }) => {
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="text-xl font-bold text-[#00f0ff]">
-                  Песочница #{sandbox.sandbox_id.slice(-4)}
+                  Песочница #{sandbox.sandbox_id?.slice(-4) || '???'}
                 </h3>
                 <p className="text-sm text-gray-400 mt-1">
-                  Тип: {sandbox.challenge_type}
+                  Тип: {sandbox.challenge_type || 'неизвестно'}
+                </p>
+                {/* Временно показываем URL для отладки */}
+                <p className="text-xs text-gray-500 mt-1 break-all">
+                  URL: {sandbox.url || 'не задан'}
                 </p>
               </div>
               <span className="bg-green-600 text-white text-xs px-3 py-1 rounded-full">
@@ -39,25 +53,25 @@ const SandboxesList = ({ sandboxes, onStopSandbox }) => {
             </div>
 
             <div className="text-sm text-gray-400 mb-4">
-              Запущена: {new Date(sandbox.created_at).toLocaleTimeString()}
+              Запущена: {sandbox.created_at 
+                ? new Date(sandbox.created_at).toLocaleTimeString() 
+                : 'только что'}
             </div>
 
             <div className="flex gap-3">
-              <a
-                href={sandbox.url}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => handleGoToSandbox(sandbox.url, sandbox.sandbox_id)}
                 className="flex-1 bg-[#00f0ff] text-black text-center px-4 py-2 rounded-lg 
                            font-mono font-semibold hover:bg-[#00f0ff]/80 
-                           transition-all duration-300"
+                           transition-all duration-300 cursor-pointer"
               >
                 🔗 Перейти
-              </a>
+              </button>
               <button
                 onClick={() => onStopSandbox(sandbox.sandbox_id)}
                 className="px-4 py-2 rounded-lg border-2 border-[#ff3b9c] text-[#ff3b9c] 
                            hover:bg-[#ff3b9c] hover:text-black 
-                           transition-all duration-300"
+                           transition-all duration-300 cursor-pointer"
               >
                 🛑 Стоп
               </button>

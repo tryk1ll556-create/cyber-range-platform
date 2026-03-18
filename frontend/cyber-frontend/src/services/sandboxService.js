@@ -9,9 +9,13 @@ export const sandboxService = {
       'beginner'
     );
     
-    // Если создалась — запускаем
+    console.log('🔥 Создание песочницы:', result);
+    
+    // Запускаем
     if (result.id) {
-      await backendApi.startSandbox(result.id);
+      const startResult = await backendApi.startSandbox(result.id);
+      console.log('🔥 Запуск песочницы:', startResult);
+      
       return {
         sandbox_id: result.id,
         challenge_type: challengeType,
@@ -24,11 +28,23 @@ export const sandboxService = {
   },
 
   stop: async (sandboxId) => {
-    return backendApi.stopSandbox(sandboxId);
+    const result = await backendApi.stopSandbox(sandboxId);
+    console.log('🛑 Остановка песочницы:', result);
+    return result;
   },
 
   getAll: async () => {
-    return backendApi.getAllSandboxes();
+    const data = await backendApi.getAllSandboxes();
+    console.log('📋 Данные с бекенда:', data);
+    
+    // Преобразуем в формат, который ждёт твой фронт
+    return data.map(s => ({
+      sandbox_id: s.id,
+      challenge_type: s.type,
+      status: s.status,
+      url: s.url,
+      created_at: s.created_at
+    }));
   },
 
   getLogs: async (sandboxId) => {

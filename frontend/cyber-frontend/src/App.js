@@ -7,6 +7,7 @@ import Navigation from './components/common/Navigation';
 import ChallengesList from './components/challenges/ChallengesList';
 import SandboxesList from './components/sandboxes/SandboxesList';
 import Profile from './pages/Profile';
+import Register from './pages/Register';
 import Modal from './components/common/Modal';
 import './styles/index.css';
 
@@ -48,6 +49,11 @@ function AppContent() {
       showModal('Ошибка', 'Не удалось остановить песочницу', 'error');
     }
   };
+
+  // Если мы на странице регистрации — показываем только её
+  if (location.pathname === '/register') {
+    return <Register />;
+  }
 
   if (location.pathname === '/profile') {
     return <Profile />;

@@ -1,32 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
 import { detectorApi } from '../services/detectorApi';
 import AttackFeed from '../components/AttackFeed';
 
 const Profile = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState('profile');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Заглушка пользователя (позже заменится на данные из бекенда)
-  const user = {
-    name: 'Хакер Студент',
-    email: 'student@cyber.local',
-    level: 7,
-    xp: 2450,
-    nextLevelXp: 3000,
-    completedTasks: 12,
-    rank: 'Белый хакер',
-    badges: [
-      { name: 'SQL Injection', icon: '🗃️' },
-      { name: 'XSS Master', icon: '⚡' },
-      { name: 'Path Traversal', icon: '📁' },
-      { name: 'Recon', icon: '🔍' }
-    ]
-  };
+  useEffect(() => {
+    // Проверяем, есть ли сохранённый пользователь
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      setIsAuthenticated(true);
+    }
+  }, []);
 
-  // Загрузка статистики при открытии вкладки stats
   useEffect(() => {
     if (activeTab === 'stats') {
       setLoading(true);
@@ -42,7 +34,8 @@ const Profile = () => {
     }
   }, [activeTab]);
 
-  // Компонент для карточки статистики
+  const progress = Math.round((user.xp / user.nextLevelXp) * 100);
+
   const StatCard = ({ label, value }) => (
     <div className="bg-[#1a2332] p-4 rounded-lg border border-[#2a3a5e] text-center">
       <div className="text-2xl font-bold text-[#00f0ff] mb-1">{value}</div>
@@ -50,12 +43,12 @@ const Profile = () => {
     </div>
   );
 
+  // Если не авторизован — показываем форму входа
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
         <div className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-8 max-w-md w-full shadow-[0_0_30px_rgba(0,240,255,0.2)] relative">
           
-          {/* Кнопка назад на главную */}
           <Link
             to="/"
             className="absolute top-4 left-4 text-gray-400 hover:text-[#00f0ff] transition-all text-sm flex items-center gap-1"
@@ -95,9 +88,9 @@ const Profile = () => {
 
             <div className="text-center text-gray-400 text-sm">
               Нет аккаунта?{' '}
-              <button className="text-[#00f0ff] hover:underline">
+              <Link to="/register" className="text-[#00f0ff] hover:underline">
                 Зарегистрироваться
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -114,13 +107,11 @@ const Profile = () => {
     );
   }
 
-  const progress = Math.round((user.xp / user.nextLevelXp) * 100);
-
+  // Авторизован — показываем профиль
   return (
     <div className="min-h-screen bg-[#0a0f1e] p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
         
-        {/* Кнопка назад на главную */}
         <div className="mb-4">
           <Link
             to="/"
@@ -130,34 +121,19 @@ const Profile = () => {
           </Link>
         </div>
 
-        {/* Шапка профиля */}
-        <div className="bg-[#141b2b]/80 backdrop-blur-sm border border-[#2a3a5e] rounded-xl p-6 md:p-8 mb-6 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => setIsAuthenticated(false)}
-              className="text-sm text-gray-400 hover:text-[#ff3b9c] transition-all"
-            >
-              🚪 Выйти
-            </button>
-          </div>
-
+        <div className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6 md:p-8 mb-6 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
           <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="relative group">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-[#1a2332] border-4 border-[#00f0ff] shadow-[0_0_20px_#00f0ff] flex items-center justify-center">
-                <span className="text-4xl md:text-5xl">👨‍💻</span>
-              </div>
-              <button className="absolute bottom-0 right-0 bg-[#00f0ff] text-black rounded-full w-8 h-8 flex items-center justify-center text-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                ✏️
-              </button>
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-[#1a2332] border-4 border-[#00f0ff] shadow-[0_0_20px_#00f0ff] flex items-center justify-center">
+              <span className="text-4xl md:text-5xl">👨‍💻</span>
             </div>
 
-            <div className="text-center md:text-left flex-1">
+            <div className="text-center md:text-left flex-1 w-full">
               <h1 className="text-2xl md:text-3xl font-bold text-[#00f0ff] drop-shadow-[0_0_8px_#00f0ff] mb-2">
                 {user.name}
               </h1>
               <p className="text-gray-400 mb-3">{user.email}</p>
               
-              <div className="max-w-md">
+              <div className="max-w-md mb-3">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-[#00f0ff]">Уровень {user.level}</span>
                   <span className="text-gray-400">{user.xp} / {user.nextLevelXp} XP</span>
@@ -170,9 +146,12 @@ const Profile = () => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-4">
+              <div className="flex flex-wrap justify-center md:justify-start gap-2">
                 <span className="bg-[#1a2332] border border-[#2a3a5e] text-xs px-3 py-1 rounded-full">
                   🏆 {user.rank}
+                </span>
+                <span className="bg-[#1a2332] border border-[#2a3a5e] text-xs px-3 py-1 rounded-full">
+                  📊 Уровень {user.level}
                 </span>
                 <span className="bg-[#1a2332] border border-[#2a3a5e] text-xs px-3 py-1 rounded-full">
                   ✅ {user.completedTasks} заданий
@@ -182,15 +161,13 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Табы */}
         <div className="flex gap-2 mb-6 border-b border-[#2a3a5e] pb-2 overflow-x-auto">
           {[
             { id: 'profile', label: '👤 Профиль' },
             { id: 'badges', label: '🏅 Достижения' },
             { id: 'stats', label: '📊 Статистика' },
             { id: 'feed', label: '⚡ Лента атак' },
-            { id: 'dashboard', label: '📈 Дашборд' },
-            { id: 'settings', label: '⚙️ Настройки' }
+            { id: 'dashboard', label: '📈 Дашборд' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -206,7 +183,6 @@ const Profile = () => {
           ))}
         </div>
 
-        {/* Контент вкладок */}
         <div className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6">
           {activeTab === 'profile' && (
             <div className="space-y-4">
@@ -236,10 +212,10 @@ const Profile = () => {
             <div>
               <h2 className="text-xl font-bold text-[#00f0ff] mb-4">🏅 Достижения</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {user.badges.map((badge, i) => (
+                {['SQL Injection', 'XSS Master', 'Path Traversal', 'Recon'].map((badge, i) => (
                   <div key={i} className="bg-[#1a2332] border border-[#2a3a5e] rounded-lg p-4 text-center hover:border-[#00f0ff] transition-all">
-                    <div className="text-3xl mb-2">{badge.icon}</div>
-                    <div className="text-sm font-bold text-[#00f0ff]">{badge.name}</div>
+                    <div className="text-3xl mb-2">🏆</div>
+                    <div className="text-sm font-bold text-[#00f0ff]">{badge}</div>
                   </div>
                 ))}
               </div>
@@ -288,26 +264,6 @@ const Profile = () => {
                 className="w-full h-[600px] rounded-lg border border-[#2a3a5e]"
                 title="SOC Dashboard"
               />
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div>
-              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">⚙️ Настройки</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-[#1a2332] rounded-lg border border-[#2a3a5e]">
-                  <span>Тёмная тема</span>
-                  <span className="text-[#00f0ff]">✅</span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-[#1a2332] rounded-lg border border-[#2a3a5e]">
-                  <span>Уведомления</span>
-                  <span className="text-[#00f0ff]">✅</span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-[#1a2332] rounded-lg border border-[#2a3a5e]">
-                  <span>Двухфакторная аутентификация</span>
-                  <span className="text-gray-400">❌</span>
-                </div>
-              </div>
             </div>
           )}
         </div>
