@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { UserProvider } from './context/UserContext';
+import { UserProvider, useUser } from './context/UserContext';
 import { sandboxService } from './services/sandboxService';
 import Header from './components/common/Header';
 import Navigation from './components/common/Navigation';
@@ -9,6 +9,7 @@ import SandboxesList from './components/sandboxes/SandboxesList';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
 import Modal from './components/common/Modal';
+import Toast from './components/common/Toast';
 import './styles/index.css';
 
 function AppContent() {
@@ -22,6 +23,7 @@ function AppContent() {
     type: 'info' 
   });
   const location = useLocation();
+  const { toast } = useUser();
 
   const showModal = (title, message, type = 'info') => {
     setModal({ isOpen: true, title, message, type });
@@ -50,7 +52,6 @@ function AppContent() {
     }
   };
 
-  // Если мы на странице регистрации — показываем только её
   if (location.pathname === '/register') {
     return <Register />;
   }
@@ -89,6 +90,15 @@ function AppContent() {
         message={modal.message}
         type={modal.type}
       />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClick={toast.onClick}
+          onClose={() => {}}
+        />
+      )}
     </>
   );
 }

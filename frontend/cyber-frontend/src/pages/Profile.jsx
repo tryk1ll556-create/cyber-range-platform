@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { detectorApi } from '../services/detectorApi';
 import AttackFeed from '../components/AttackFeed';
+import AchievementsList from '../components/AchievementsList';
+import Settings from '../components/Settings';
 
 const Profile = () => {
-  const { user } = useUser();
-  const [activeTab, setActiveTab] = useState('profile');
+  const { user, updateUser, resetUser } = useUser();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tab') === 'badges' ? 'badges' : 'profile';
+  });
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    return localStorage.getItem('notificationsEnabled') !== 'false';
+  });
 
   useEffect(() => {
-    // Проверяем, есть ли сохранённый пользователь
     const userId = localStorage.getItem('userId');
     if (userId) {
       setIsAuthenticated(true);
@@ -122,9 +130,23 @@ const Profile = () => {
         </div>
 
         <div className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6 md:p-8 mb-6 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => {
+                localStorage.removeItem('userId');
+                localStorage.removeItem('user');
+                setIsAuthenticated(false);
+                resetUser();
+              }}
+              className="text-sm text-gray-400 hover:text-[#ff3b9c] transition-all"
+            >
+              🚪 Выйти
+            </button>
+          </div>
+
           <div className="flex flex-col md:flex-row items-center gap-6">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-[#1a2332] border-4 border-[#00f0ff] shadow-[0_0_20px_#00f0ff] flex items-center justify-center">
-              <span className="text-4xl md:text-5xl">👨‍💻</span>
+              <span className="text-4xl md:text-5xl">{localStorage.getItem('avatar') || '👨‍💻'}</span>
             </div>
 
             <div className="text-center md:text-left flex-1 w-full">
@@ -167,7 +189,8 @@ const Profile = () => {
             { id: 'badges', label: '🏅 Достижения' },
             { id: 'stats', label: '📊 Статистика' },
             { id: 'feed', label: '⚡ Лента атак' },
-            { id: 'dashboard', label: '📈 Дашборд' }
+            { id: 'dashboard', label: '📈 Дашборд' },
+            { id: 'settings', label: '⚙️ Настройки' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -210,15 +233,21 @@ const Profile = () => {
 
           {activeTab === 'badges' && (
             <div>
-              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">🏅 Достижения</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {['SQL Injection', 'XSS Master', 'Path Traversal', 'Recon'].map((badge, i) => (
-                  <div key={i} className="bg-[#1a2332] border border-[#2a3a5e] rounded-lg p-4 text-center hover:border-[#00f0ff] transition-all">
-                    <div className="text-3xl mb-2">🏆</div>
-                    <div className="text-sm font-bold text-[#00f0ff]">{badge}</div>
-                  </div>
-                ))}
-              </div>
+              <h2 className="text-xl font-bold text-[#00f0ff] mb-4">🏅 Мои достижения</h2>
+              {user.badges.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  Пока нет достижений. Выполняй задания, чтобы получить их!
+                </div>
+              ) : (
+                <AchievementsList 
+                  userBadges={user.badges} 
+                  userStats={{
+                    completedTasks: user.completedTasks,
+                    level: user.level,
+                    challengesCompleted: user.challengesCompleted
+                  }}
+                />
+              )}
             </div>
           )}
 
@@ -265,6 +294,15 @@ const Profile = () => {
                 title="SOC Dashboard"
               />
             </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <Settings
+              user={user}
+              updateUser={updateUser}
+              notificationsEnabled={notificationsEnabled}
+              setNotificationsEnabled={setNotificationsEnabled}
+            />
           )}
         </div>
       </div>
