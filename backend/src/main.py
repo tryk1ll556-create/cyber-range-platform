@@ -257,8 +257,7 @@ app.add_middleware(
 # ============== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==============
 
 def generate_sandbox_url(sandbox_id: str) -> str:
-    """Генерирует URL для доступа к песочнице"""
-    return f"http://localhost:8080/sandbox/{sandbox_id}"
+    return "http://localhost:8080"
 
 def log_action(db: Session, action: str, user_id: str = None, sandbox_id: str = None, details: str = None):
     """
@@ -408,6 +407,22 @@ def get_user(user_id: str, db: Session = Depends(get_db)):
     }
     
     return user_dict
+
+# ============== ЛОГИН ==============
+
+@app.post("/login")
+def login(username: str, password: str, db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.username == username).first()
+    if not user or user.password_hash != password:
+        raise HTTPException(status_code=401, detail="Неверное имя пользователя или пароль")
+    
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "full_name": user.full_name,
+        "experience_points": user.experience_points
+    }
 
 # ============== УПРАВЛЕНИЕ ПЕСОЧНИЦАМИ ==============
 
@@ -979,35 +994,33 @@ def submit_lab(attempt_id: str, flags: List[str]):
         if l["id"] == attempt["lab_id"]:
             lab = l
             break
-    
+
     if not lab:
         raise HTTPException(status_code=404, detail="Лабораторная работа не найдена")
-    
+
     # Проверяем флаги
     correct_flags = set(lab["flags"])
     submitted_flags = set(flags)
     found_flags = list(correct_flags & submitted_flags)
-    
+
     # Рассчитываем время выполнения
     started = datetime.fromisoformat(attempt["started_at"])
     time_spent = int((datetime.now() - started).total_seconds())
-    
+
     # Рассчитываем score
     score = int((len(found_flags) / len(correct_flags)) * lab["max_score"])
-    
+
     # Обновляем попытку
     lab_attempts_db[attempt_index]["completed_at"] = datetime.now()
     lab_attempts_db[attempt_index]["score"] = score
     lab_attempts_db[attempt_index]["status"] = "completed" if score >= 70 else "failed"
     lab_attempts_db[attempt_index]["flags_found"] = found_flags
     lab_attempts_db[attempt_index]["time_spent"] = time_spent
-    
+
     # Обновляем статистику лабораторной работы
     for i, l in enumerate(labs_db):
         if l["id"] == lab["id"]:
-            # Увеличиваем счетчик выполнений
             labs_db[i]["completed_count"] = l.get("completed_count", 0) + 1
-            # Обновляем средний балл
             old_avg = l.get("average_score", 0)
             old_count = l.get("completed_count", 0)
             if old_count > 0:
@@ -1015,7 +1028,7 @@ def submit_lab(attempt_id: str, flags: List[str]):
             else:
                 labs_db[i]["average_score"] = score
             break
-    
+
     return {
         "success": True,
         "score": score,
@@ -1029,22 +1042,15 @@ def submit_lab(attempt_id: str, flags: List[str]):
 @app.get("/labs/attempt/user/{user_id}")
 def get_user_attempts(user_id: str):
     """Получение всех попыток пользователя"""
-    
     user_attempts = [a for a in lab_attempts_db if a["user_id"] == user_id]
-    
-    # Сортируем по дате (сначала новые)
     user_attempts.sort(key=lambda x: x["started_at"], reverse=True)
-    
     return user_attempts
 
 # ============== ТЕСТЫ ==============
 
 @app.post("/quizzes", response_model=Quiz, status_code=201)
 def create_quiz(quiz_data: QuizCreate, author_id: str = "teacher"):
-    """Создание нового теста"""
-    
     quiz_id = str(uuid.uuid4())[:8]
-    
     new_quiz = Quiz(
         id=quiz_id,
         title=quiz_data.title,
@@ -1056,41 +1062,25 @@ def create_quiz(quiz_data: QuizCreate, author_id: str = "teacher"):
         created_at=datetime.now(),
         attempts_count=0
     )
-    
     quizzes_db.append(new_quiz.dict())
-    
     return new_quiz
 
 @app.get("/quizzes", response_model=List[Quiz])
 def get_all_quizzes():
-    """Получение списка всех тестов"""
     return quizzes_db
 
 @app.get("/quizzes/{quiz_id}", response_model=Quiz)
 def get_quiz(quiz_id: str):
-    """Получение конкретного теста"""
-    
     for quiz in quizzes_db:
         if quiz["id"] == quiz_id:
             return quiz
-    
     raise HTTPException(status_code=404, detail="Тест не найден")
 
 @app.post("/quizzes/{quiz_id}/start")
 def start_quiz(quiz_id: str, user_id: str):
-    """Начало прохождения теста"""
-    
-    # Проверяем существование теста
-    quiz_exists = False
-    for quiz in quizzes_db:
-        if quiz["id"] == quiz_id:
-            quiz_exists = True
-            break
-    
+    quiz_exists = any(q["id"] == quiz_id for q in quizzes_db)
     if not quiz_exists:
         raise HTTPException(status_code=404, detail="Тест не найден")
-    
-    # Создаем новую попытку
     attempt_id = str(uuid.uuid4())[:8]
     new_attempt = QuizAttempt(
         id=attempt_id,
@@ -1099,73 +1089,40 @@ def start_quiz(quiz_id: str, user_id: str):
         started_at=datetime.now(),
         answers=[]
     )
-    
     quiz_attempts_db.append(new_attempt.dict())
-    
-    return {
-        "success": True,
-        "attempt_id": attempt_id,
-        "message": "Тест начат"
-    }
+    return {"success": True, "attempt_id": attempt_id, "message": "Тест начат"}
 
 @app.post("/quizzes/attempt/{attempt_id}/submit")
 def submit_quiz(attempt_id: str, answers: List[int]):
-    """Сдача теста"""
-    
-    # Находим попытку
-    attempt_index = None
-    attempt = None
-    
-    for i, a in enumerate(quiz_attempts_db):
-        if a["id"] == attempt_id:
-            attempt_index = i
-            attempt = a
-            break
-    
+    attempt = next((a for a in quiz_attempts_db if a["id"] == attempt_id), None)
     if not attempt:
         raise HTTPException(status_code=404, detail="Попытка не найдена")
-    
-    # Находим тест
-    quiz = None
-    for q in quizzes_db:
-        if q["id"] == attempt["quiz_id"]:
-            quiz = q
-            break
-    
+    quiz = next((q for q in quizzes_db if q["id"] == attempt["quiz_id"]), None)
     if not quiz:
         raise HTTPException(status_code=404, detail="Тест не найден")
-    
-    # Проверяем ответы
-    correct_count = 0
     total_points = 0
     earned_points = 0
-    
-    for i, question in enumerate(quiz["questions"]):
-        total_points += question["points"]
-        if i < len(answers) and answers[i] == question["correct_answer"]:
-            correct_count += 1
-            earned_points += question["points"]
-    
-    # Рассчитываем процент
-    score_percentage = int((earned_points / total_points) * 100) if total_points > 0 else 0
-    passed = score_percentage >= quiz["passing_score"]
-    
-    # Обновляем попытку
-    quiz_attempts_db[attempt_index]["completed_at"] = datetime.now()
-    quiz_attempts_db[attempt_index]["answers"] = answers
-    quiz_attempts_db[attempt_index]["score"] = score_percentage
-    quiz_attempts_db[attempt_index]["passed"] = passed
-    
-    # Обновляем статистику теста
+    for i, q in enumerate(quiz["questions"]):
+        total_points += q["points"]
+        if i < len(answers) and answers[i] == q["correct_answer"]:
+            earned_points += q["points"]
+    score = int((earned_points / total_points) * 100) if total_points else 0
+    passed = score >= quiz["passing_score"]
+    for i, a in enumerate(quiz_attempts_db):
+        if a["id"] == attempt_id:
+            quiz_attempts_db[i]["completed_at"] = datetime.now()
+            quiz_attempts_db[i]["answers"] = answers
+            quiz_attempts_db[i]["score"] = score
+            quiz_attempts_db[i]["passed"] = passed
+            break
     for i, q in enumerate(quizzes_db):
         if q["id"] == quiz["id"]:
             quizzes_db[i]["attempts_count"] = q.get("attempts_count", 0) + 1
             break
-    
     return {
         "success": True,
-        "score": score_percentage,
-        "correct_answers": correct_count,
+        "score": score,
+        "correct_answers": sum(1 for i, q in enumerate(quiz["questions"]) if i < len(answers) and answers[i] == q["correct_answer"]),
         "total_questions": len(quiz["questions"]),
         "passed": passed,
         "message": "Тест пройден!" if passed else "Тест не пройден"
@@ -1175,49 +1132,30 @@ def submit_quiz(attempt_id: str, answers: List[int]):
 
 @app.get("/users/{user_id}/progress")
 def get_user_progress(user_id: str, db: Session = Depends(get_db)):
-    """Получение полного прогресса пользователя"""
-    
-    # Находим пользователя в БД
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
-    
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
-    # Собираем статистику по лабораторным работам
     lab_attempts = [a for a in lab_attempts_db if a["user_id"] == user_id]
-    
     completed_labs = set()
     lab_scores = []
-    
     for attempt in lab_attempts:
         if attempt["status"] == "completed":
             completed_labs.add(attempt["lab_id"])
             if attempt.get("score"):
                 lab_scores.append(attempt["score"])
-    
-    # Собираем статистику по тестам
     quiz_attempts = [a for a in quiz_attempts_db if a["user_id"] == user_id]
-    
     passed_quizzes = 0
     quiz_scores = []
-    
     for attempt in quiz_attempts:
         if attempt.get("passed"):
             passed_quizzes += 1
         if attempt.get("score"):
             quiz_scores.append(attempt["score"])
-    
-    # Собираем статистику по просмотренным материалам
-    viewed_content = []
-    if user.completed_labs:
-        viewed_content = json.loads(user.completed_labs)
-    
-    # Обновляем опыт пользователя
-    total_score = sum(lab_scores) + (sum(quiz_scores) * 10)
+    viewed_content = json.loads(user.completed_labs) if user.completed_labs else []
+    total_score = sum(lab_scores) + sum(quiz_scores) * 10
     user.experience_points = total_score
     user.completed_labs = json.dumps(list(completed_labs))
     db.commit()
-    
     return {
         "user_id": user_id,
         "username": user.username,
@@ -1236,11 +1174,7 @@ def get_user_progress(user_id: str, db: Session = Depends(get_db)):
 
 @app.get("/users/{user_id}/activities")
 def get_user_activities(user_id: str, limit: int = 10):
-    """Получение последних активностей пользователя"""
-    
     activities = []
-    
-    # Добавляем попытки лабораторных работ
     for attempt in lab_attempts_db:
         if attempt["user_id"] == user_id:
             activities.append({
@@ -1250,8 +1184,6 @@ def get_user_activities(user_id: str, limit: int = 10):
                 "score": attempt.get("score"),
                 "timestamp": attempt["started_at"]
             })
-    
-    # Добавляем попытки тестов
     for attempt in quiz_attempts_db:
         if attempt["user_id"] == user_id:
             activities.append({
@@ -1261,26 +1193,17 @@ def get_user_activities(user_id: str, limit: int = 10):
                 "score": attempt.get("score"),
                 "timestamp": attempt["started_at"]
             })
-    
-    # Сортируем по времени (сначала новые)
     activities.sort(key=lambda x: x["timestamp"], reverse=True)
-    
     return activities[:limit]
 
 @app.get("/leaderboard")
 def get_leaderboard(db: Session = Depends(get_db)):
-    """Получение таблицы лидеров"""
-    
     users = db.query(UserModel).all()
     leaderboard = []
-    
     for user in users:
-        # Собираем статистику пользователя
         lab_attempts = [a for a in lab_attempts_db if a["user_id"] == user.id]
         completed_labs = len([a for a in lab_attempts if a["status"] == "completed"])
-        
         total_score = user.experience_points or 0
-        
         leaderboard.append({
             "user_id": user.id,
             "username": user.username,
@@ -1288,14 +1211,9 @@ def get_leaderboard(db: Session = Depends(get_db)):
             "completed_labs": completed_labs,
             "avatar": None
         })
-    
-    # Сортируем по опыту (убывание)
     leaderboard.sort(key=lambda x: x["experience_points"], reverse=True)
-    
-    # Добавляем место
     for i, entry in enumerate(leaderboard):
         entry["rank"] = i + 1
-    
     return leaderboard
 
 # ============== ЗАПУСК СЕРВЕРА ==============
