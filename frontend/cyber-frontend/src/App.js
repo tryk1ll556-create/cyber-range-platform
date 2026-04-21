@@ -8,8 +8,9 @@ import ChallengesList from './components/challenges/ChallengesList';
 import SandboxesList from './components/sandboxes/SandboxesList';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
+import Login from './pages/Login';
+import PrivateRoute from './components/PrivateRoute';
 import Modal from './components/common/Modal';
-import Toast from './components/common/Toast';
 import './styles/index.css';
 
 function AppContent() {
@@ -23,19 +24,29 @@ function AppContent() {
     type: 'info' 
   });
   const location = useLocation();
-  const { toast } = useUser();
+  const { addXP } = useUser();
 
   const showModal = (title, message, type = 'info') => {
     setModal({ isOpen: true, title, message, type });
   };
 
   const startSandbox = async (challengeType) => {
+    const userId = localStorage.getItem('userId');
+    
+    // Проверка авторизации
+    if (!userId) {
+      showModal('Доступ запрещен', 'Авторизуйтесь, чтобы запускать задания', 'error');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const newSandbox = await sandboxService.start(challengeType);
+      const newSandbox = await sandboxService.start(challengeType, userId);
       setSandboxes(prev => [...prev, newSandbox]);
+      addXP(25);
       showModal('Успех', `Песочница для ${challengeType} запущена!`, 'success');
     } catch (error) {
+      console.error('Ошибка запуска:', error);
       showModal('Ошибка', 'Не удалось запустить песочницу', 'error');
     } finally {
       setIsLoading(false);
@@ -48,16 +59,41 @@ function AppContent() {
       setSandboxes(prev => prev.filter(s => s.sandbox_id !== sandboxId));
       showModal('Успех', 'Песочница остановлена', 'success');
     } catch (error) {
+      console.error('Ошибка остановки:', error);
       showModal('Ошибка', 'Не удалось остановить песочницу', 'error');
     }
   };
 
-  if (location.pathname === '/register') {
-    return <Register />;
+  // Загружаем песочницы при монтировании и после запуска/остановки
+  React.useEffect(() => {
+    const loadSandboxes = async () => {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        try {
+          const data = await sandboxService.getAll(userId);
+          setSandboxes(data);
+        } catch (error) {
+          console.error('Ошибка загрузки песочниц:', error);
+        }
+      }
+    };
+    loadSandboxes();
+  }, []);
+
+  // Если на странице логина или регистрации — не показываем основной интерфейс
+  if (location.pathname === '/login' || location.pathname === '/register') {
+    return <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+    </Routes>;
   }
 
   if (location.pathname === '/profile') {
-    return <Profile />;
+    return (
+      <PrivateRoute>
+        <Profile />
+      </PrivateRoute>
+    );
   }
 
   return (
@@ -90,15 +126,6 @@ function AppContent() {
         message={modal.message}
         type={modal.type}
       />
-
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClick={toast.onClick}
-          onClose={() => {}}
-        />
-      )}
     </>
   );
 }

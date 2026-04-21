@@ -18,7 +18,6 @@ export const UserProvider = ({ children }) => {
     attacksDetected: 0,
     badges: []
   });
-  const [toast, setToast] = useState(null);
 
   // Загружаем данные из localStorage при старте
   useEffect(() => {
@@ -30,7 +29,7 @@ export const UserProvider = ({ children }) => {
           name: parsed.username || parsed.full_name || parsed.name || 'Пользователь',
           email: parsed.email || '',
           level: parsed.level || 1,
-          xp: parsed.xp || 0,
+          xp: parsed.experience_points || parsed.xp || 0,
           nextLevelXp: parsed.nextLevelXp || 100,
           completedTasks: parsed.completedTasks || 0,
           rank: parsed.rank || 'Новичок',
@@ -48,12 +47,6 @@ export const UserProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('user', JSON.stringify(user));
   }, [user]);
-
-  // Показать уведомление
-  const showToast = (message, type = 'info', onClick = null) => {
-    setToast({ message, type, onClick });
-    setTimeout(() => setToast(null), 5300);
-  };
 
   // Функция для проверки и обновления достижений
   const checkAchievements = (currentUser) => {
@@ -73,21 +66,13 @@ export const UserProvider = ({ children }) => {
         newBadges.push(achievement.id);
         updated = true;
         newAchievement = achievement;
-        // Сохраняем в localStorage для анимации
         localStorage.setItem('lastUnlockedBadge', achievement.id);
       }
     });
 
     if (updated && newAchievement) {
-      // Показываем уведомление о получении достижения
-      showToast(
-        `Получено достижение: ${newAchievement.name}!`,
-        'achievement',
-        () => {
-          // Переход в профиль на вкладку достижений
-          window.location.href = '/profile?tab=badges';
-        }
-      );
+      // Уведомление о достижении пока оставим заглушкой
+      console.log(`🏆 Получено достижение: ${newAchievement.name}`);
     }
 
     if (updated) {
@@ -149,21 +134,17 @@ export const UserProvider = ({ children }) => {
   };
 
   const updateUser = (userData) => {
-    setUser(prev => {
-      const updated = {
-        ...prev,
-        name: userData.username || userData.full_name || userData.name || 'Пользователь',
-        email: userData.email || '',
-        level: userData.level || 1,
-        xp: userData.experience_points || userData.xp || 0,
-        nextLevelXp: userData.nextLevelXp || 100,
-        completedTasks: userData.completedTasks || 0,
-        rank: userData.rank || 'Новичок',
-        challengesCompleted: userData.challengesCompleted || [],
-        attacksDetected: userData.attacksDetected || 0,
-        badges: userData.badges || []
-      };
-      return checkAchievements(updated);
+    setUser({
+      name: userData.username || userData.full_name || userData.name || 'Пользователь',
+      email: userData.email || '',
+      level: 1,
+      xp: userData.experience_points || 0,
+      nextLevelXp: 100,
+      completedTasks: 0,
+      rank: 'Новичок',
+      challengesCompleted: [],
+      attacksDetected: 0,
+      badges: []
     });
   };
 
@@ -191,8 +172,7 @@ export const UserProvider = ({ children }) => {
       updateUser,
       addCompletedChallenge,
       addDetectedAttack,
-      resetUser,
-      toast
+      resetUser
     }}>
       {children}
     </UserContext.Provider>

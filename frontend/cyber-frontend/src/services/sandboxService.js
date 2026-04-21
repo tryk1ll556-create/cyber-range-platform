@@ -1,30 +1,32 @@
 import { backendApi } from './backendApi';
 
 export const sandboxService = {
-  start: async (challengeType) => {
-    // Создаём песочницу с типом задания
-    const result = await backendApi.createSandbox(
+  start: async (challengeType, userId) => {
+    // Создаём песочницу с типом задания и привязываем к пользователю
+    const createResult = await backendApi.createSandbox(
       `Задание: ${challengeType}`,
       'webapp',
-      'beginner'
+      'beginner',
+      userId || 'guest'
     );
     
-    console.log('🔥 Создание песочницы:', result);
+    console.log('🔥 Создание песочницы:', createResult);
     
-    // Запускаем
-    if (result.id) {
-      const startResult = await backendApi.startSandbox(result.id);
-      console.log('🔥 Запуск песочницы:', startResult);
-      
-      return {
-        sandbox_id: result.id,
-        challenge_type: challengeType,
-        status: 'running',
-        url: result.url,
-        created_at: result.created_at
-      };
+    if (!createResult.id) {
+      throw new Error('Не удалось создать песочницу');
     }
-    throw new Error('Не удалось создать песочницу');
+    
+    // Запускаем песочницу
+    const startResult = await backendApi.startSandbox(createResult.id);
+    console.log('🔥 Запуск песочницы:', startResult);
+    
+    return {
+      sandbox_id: createResult.id,
+      challenge_type: challengeType,
+      status: startResult.status || 'running',
+      url: startResult.url,
+      created_at: createResult.created_at
+    };
   },
 
   stop: async (sandboxId) => {
@@ -33,11 +35,10 @@ export const sandboxService = {
     return result;
   },
 
-  getAll: async () => {
-    const data = await backendApi.getAllSandboxes();
+  getAll: async (userId) => {
+    const data = await backendApi.getAllSandboxes(userId);
     console.log('📋 Данные с бекенда:', data);
     
-    // Преобразуем в формат, который ждёт твой фронт
     return data.map(s => ({
       sandbox_id: s.id,
       challenge_type: s.type,

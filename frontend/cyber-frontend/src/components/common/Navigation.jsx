@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 const Navigation = ({ activeTab, onTabChange, sandboxCount }) => {
   const location = useLocation();
@@ -31,13 +31,6 @@ const Navigation = ({ activeTab, onTabChange, sandboxCount }) => {
             </button>
           ))}
         </div>
-
-        <Link
-          to="/profile"
-          className="w-full md:w-auto text-center bg-transparent border-2 border-[#00f0ff] text-[#00f0ff] px-6 py-2 rounded-lg font-mono font-semibold hover:bg-[#00f0ff] hover:text-black transition-all"
-        >
-          👤 Профиль
-        </Link>
       </div>
     </nav>
   );

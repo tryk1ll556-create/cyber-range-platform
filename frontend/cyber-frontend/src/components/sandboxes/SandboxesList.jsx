@@ -1,5 +1,15 @@
 import React from 'react';
 
+const getChallengeName = (type) => {
+  const names = {
+    sqli: 'SQL Injection',
+    xss: 'XSS Attack',
+    rce: 'Remote Code Execution',
+    path_traversal: 'Path Traversal'
+  };
+  return names[type] || type;
+};
+
 const SandboxesList = ({ sandboxes, onStopSandbox }) => {
   if (sandboxes.length === 0) {
     return (
@@ -10,16 +20,6 @@ const SandboxesList = ({ sandboxes, onStopSandbox }) => {
       </div>
     );
   }
-
-  const handleGoToSandbox = (url, sandboxId) => {
-    console.log('🔗 Попытка перехода по URL:', url, 'для песочницы:', sandboxId);
-    
-    if (url && typeof url === 'string' && url.startsWith('http')) {
-      window.open(url, '_blank');
-    } else {
-      alert(`Ссылка на песочницу временно недоступна.\nПолученный URL: ${url || 'пусто'}\nОжидается настройка сервера.`);
-    }
-  };
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-8">
@@ -40,11 +40,7 @@ const SandboxesList = ({ sandboxes, onStopSandbox }) => {
                   Песочница #{sandbox.sandbox_id?.slice(-4) || '???'}
                 </h3>
                 <p className="text-sm text-gray-400 mt-1">
-                  Тип: {sandbox.challenge_type || 'неизвестно'}
-                </p>
-                {/* Временно показываем URL для отладки */}
-                <p className="text-xs text-gray-500 mt-1 break-all">
-                  URL: {sandbox.url || 'не задан'}
+                  Тип: {getChallengeName(sandbox.challenge_type)}
                 </p>
               </div>
               <span className="bg-green-600 text-white text-xs px-3 py-1 rounded-full">
@@ -60,7 +56,7 @@ const SandboxesList = ({ sandboxes, onStopSandbox }) => {
 
             <div className="flex gap-3">
               <button
-                onClick={() => handleGoToSandbox(sandbox.url, sandbox.sandbox_id)}
+                onClick={() => window.open(sandbox.url, '_blank')}
                 className="flex-1 bg-[#00f0ff] text-black text-center px-4 py-2 rounded-lg 
                            font-mono font-semibold hover:bg-[#00f0ff]/80 
                            transition-all duration-300 cursor-pointer"

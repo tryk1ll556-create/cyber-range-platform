@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { detectorApi } from '../services/detectorApi';
 import AttackFeed from '../components/AttackFeed';
@@ -8,25 +8,14 @@ import Settings from '../components/Settings';
 
 const Profile = () => {
   const { user, updateUser, resetUser } = useUser();
-  const location = useLocation();
-  const [activeTab, setActiveTab] = useState(() => {
-    const params = new URLSearchParams(location.search);
-    return params.get('tab') === 'badges' ? 'badges' : 'profile';
-  });
+  const [activeTab, setActiveTab] = useState('profile');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     return localStorage.getItem('notificationsEnabled') !== 'false';
   });
 
-  useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (userId) {
-      setIsAuthenticated(true);
-    }
-  }, []);
-
+  // Хуки ДО условного возврата
   useEffect(() => {
     if (activeTab === 'stats') {
       setLoading(true);
@@ -51,71 +40,11 @@ const Profile = () => {
     </div>
   );
 
-  // Если не авторизован — показываем форму входа
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
-        <div className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-8 max-w-md w-full shadow-[0_0_30px_rgba(0,240,255,0.2)] relative">
-          
-          <Link
-            to="/"
-            className="absolute top-4 left-4 text-gray-400 hover:text-[#00f0ff] transition-all text-sm flex items-center gap-1"
-          >
-            ← На главную
-          </Link>
-
-          <h2 className="text-3xl font-bold text-center text-[#00f0ff] drop-shadow-[0_0_10px_#00f0ff] mb-6 mt-4">
-            🔐 Вход в систему
-          </h2>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">Email</label>
-              <input
-                type="email"
-                placeholder="student@cyber.local"
-                className="w-full bg-[#1a2332] border border-[#2a3a5e] rounded-lg px-4 py-3 text-white focus:border-[#00f0ff] focus:outline-none transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">Пароль</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full bg-[#1a2332] border border-[#2a3a5e] rounded-lg px-4 py-3 text-white focus:border-[#00f0ff] focus:outline-none transition-all"
-              />
-            </div>
-
-            <button
-              onClick={() => setIsAuthenticated(true)}
-              className="w-full bg-[#00f0ff] text-black font-bold py-3 rounded-lg hover:bg-[#00f0ff]/80 transition-all shadow-[0_0_15px_#00f0ff]"
-            >
-              🚀 Войти
-            </button>
-
-            <div className="text-center text-gray-400 text-sm">
-              Нет аккаунта?{' '}
-              <Link to="/register" className="text-[#00f0ff] hover:underline">
-                Зарегистрироваться
-              </Link>
-            </div>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-[#2a3a5e] text-center">
-            <button
-              onClick={() => setIsAuthenticated(true)}
-              className="text-sm text-gray-500 hover:text-[#00f0ff] transition-all"
-            >
-              ⚡ Войти как гость (демо)
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  // Проверка авторизации ПОСЛЕ всех хуков
+  if (!localStorage.getItem('userId')) {
+    return <Navigate to="/login" />;
   }
 
-  // Авторизован — показываем профиль
   return (
     <div className="min-h-screen bg-[#0a0f1e] p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
@@ -135,7 +64,6 @@ const Profile = () => {
               onClick={() => {
                 localStorage.removeItem('userId');
                 localStorage.removeItem('user');
-                setIsAuthenticated(false);
                 resetUser();
               }}
               className="text-sm text-gray-400 hover:text-[#ff3b9c] transition-all"

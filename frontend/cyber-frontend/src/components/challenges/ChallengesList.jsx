@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { challenges } from '../../data/challenges';
 import Spinner from '../common/Spinner';
 import { useUser } from '../../context/UserContext';
 
 const ChallengesList = ({ onStartSandbox, isLoading }) => {
   const { addXP, addCompletedChallenge } = useUser();
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
 
   const handleStart = (challengeId) => {
     onStartSandbox(challengeId);
@@ -14,57 +12,14 @@ const ChallengesList = ({ onStartSandbox, isLoading }) => {
     addCompletedChallenge(challengeId);
   };
 
-  const filteredChallenges = challenges.filter(challenge => {
-    const matchesFilter = filter === 'all' || challenge.id === filter;
-    const matchesSearch = challenge.name.toLowerCase().includes(search.toLowerCase()) ||
-                          challenge.description.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
-
-  const filters = [
-    { id: 'all', label: 'Все' },
-    { id: 'sqli', label: 'SQL Injection' },
-    { id: 'xss', label: 'XSS' },
-    { id: 'path_traversal', label: 'Path Traversal' }
-  ];
-
   return (
     <section className="max-w-6xl mx-auto px-4 py-8">
       <h2 className="text-3xl font-bold text-center mb-8 text-[#00f0ff] drop-shadow-[0_0_10px_#00f0ff]">
         🎯 Доступные задания
       </h2>
 
-      {/* Фильтры */}
-      <div className="flex flex-wrap justify-center gap-2 mb-6">
-        {filters.map(f => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
-            className={`px-4 py-2 rounded-lg font-mono transition-all ${
-              filter === f.id
-                ? 'bg-[#00f0ff] text-black shadow-[0_0_10px_#00f0ff]'
-                : 'bg-[#1a2332] text-white hover:bg-[#2a3a5e]'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Поиск */}
-      <div className="max-w-md mx-auto mb-8">
-        <input
-          type="text"
-          placeholder="🔍 Поиск по названию или описанию..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[#1a2332] border border-[#2a3a5e] rounded-lg px-4 py-2 text-white focus:border-[#00f0ff] focus:outline-none"
-        />
-      </div>
-
-      {/* Сетка заданий */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredChallenges.map(challenge => (
+        {challenges.map(challenge => (
           <div
             key={challenge.id}
             className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6 
