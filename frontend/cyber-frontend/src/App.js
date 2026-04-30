@@ -33,7 +33,6 @@ function AppContent() {
   const startSandbox = async (challengeType) => {
     const userId = localStorage.getItem('userId');
     
-    // Проверка авторизации
     if (!userId) {
       showModal('Доступ запрещен', 'Авторизуйтесь, чтобы запускать задания', 'error');
       return;
@@ -80,7 +79,6 @@ function AppContent() {
     loadSandboxes();
   }, []);
 
-  // Если на странице логина или регистрации — не показываем основной интерфейс
   if (location.pathname === '/login' || location.pathname === '/register') {
     return <Routes>
       <Route path="/login" element={<Login />} />

@@ -31,8 +31,9 @@ const SandboxesList = ({ sandboxes, onStopSandbox }) => {
         {sandboxes.map(sandbox => (
           <div
             key={sandbox.sandbox_id}
-            className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6 
-                       hover:border-[#00f0ff] transition-all duration-300"
+            className="bg-gradient-to-br from-[#141b2b] to-[#0f1625] border border-[#2a3a5e] rounded-2xl p-6 
+                       hover:border-[#00f0ff] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] 
+                       transition-all duration-300 hover:scale-[1.01]"
           >
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -43,7 +44,7 @@ const SandboxesList = ({ sandboxes, onStopSandbox }) => {
                   Тип: {getChallengeName(sandbox.challenge_type)}
                 </p>
               </div>
-              <span className="bg-green-600 text-white text-xs px-3 py-1 rounded-full">
+              <span className="bg-green-600/20 text-green-400 text-xs px-3 py-1 rounded-full border border-green-500/30">
                 🟢 Запущена
               </span>
             </div>
@@ -57,17 +58,15 @@ const SandboxesList = ({ sandboxes, onStopSandbox }) => {
             <div className="flex gap-3">
               <button
                 onClick={() => window.open(sandbox.url, '_blank')}
-                className="flex-1 bg-[#00f0ff] text-black text-center px-4 py-2 rounded-lg 
-                           font-mono font-semibold hover:bg-[#00f0ff]/80 
-                           transition-all duration-300 cursor-pointer"
+                className="flex-1 bg-[#00f0ff] text-black font-bold text-center px-4 py-2 rounded-xl 
+                           hover:bg-[#00f0ff]/80 transition-all duration-300"
               >
                 🔗 Перейти
               </button>
               <button
                 onClick={() => onStopSandbox(sandbox.sandbox_id)}
-                className="px-4 py-2 rounded-lg border-2 border-[#ff3b9c] text-[#ff3b9c] 
-                           hover:bg-[#ff3b9c] hover:text-black 
-                           transition-all duration-300 cursor-pointer"
+                className="px-5 py-2 rounded-xl border-2 border-[#ff3b9c] text-[#ff3b9c] 
+                           hover:bg-[#ff3b9c] hover:text-black transition-all duration-300"
               >
                 🛑 Стоп
               </button>
