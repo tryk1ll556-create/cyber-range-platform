@@ -364,6 +364,27 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     
     return user_dict
 
+    
+# ============== СМЕНА ПАРОЛЯ ==============
+
+@app.post("/users/change-password")
+def change_password(
+    user_id: str,
+    old_password: str,
+    new_password: str,
+    db: Session = Depends(get_db)
+):
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if user.password_hash != old_password:
+        raise HTTPException(status_code=401, detail="Неверный старый пароль")
+    user.password_hash = new_password
+    db.commit()
+    return {"success": True, "message": "Пароль успешно изменён"}
+
+# ============== ПОЛУЧЕНИЕ ПОЛЬЗОВАТЕЛЕЙ ==============
+
 @app.get("/users", response_model=List[dict])
 def get_all_users(db: Session = Depends(get_db)):
     """Список всех пользователей"""
@@ -423,7 +444,6 @@ def login(username: str, password: str, db: Session = Depends(get_db)):
         "full_name": user.full_name,
         "experience_points": user.experience_points
     }
-
 # ============== УПРАВЛЕНИЕ ПЕСОЧНИЦАМИ ==============
 
 @app.post("/sandboxes", response_model=dict, status_code=201)

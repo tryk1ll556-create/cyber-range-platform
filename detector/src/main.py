@@ -2,7 +2,7 @@
 """
 Cyber Range Detection Engine
 """
-
+import json
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -18,7 +18,6 @@ from database.db_manager import DatabaseManager
 
 app = FastAPI(title="Cyber Range Attack Detection Engine", version="2.6.0")
 
-# Разрешаем запросы с фронтенда (порт 3000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],

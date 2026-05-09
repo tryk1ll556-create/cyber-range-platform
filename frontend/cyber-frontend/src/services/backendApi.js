@@ -100,5 +100,16 @@ export const backendApi = {
     const res = await fetch(`${BACKEND_URL}/leaderboard`);
     if (!res.ok) throw new Error('Ошибка получения лидерборда');
     return res.json();
+  },
+
+  changePassword: async (userId, oldPassword, newPassword) => {
+    const res = await fetch(`${BACKEND_URL}/users/change-password?user_id=${userId}&old_password=${oldPassword}&new_password=${newPassword}`, {
+      method: 'POST'
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Ошибка смены пароля');
+    }
+    return res.json();
   }
 };
