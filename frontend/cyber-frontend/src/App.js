@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './context/UserContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { sandboxService } from './services/sandboxService';
 import Header from './components/common/Header';
 import Navigation from './components/common/Navigation';
@@ -63,7 +64,6 @@ function AppContent() {
     }
   };
 
-  // Загружаем песочницы при монтировании и после запуска/остановки
   React.useEffect(() => {
     const loadSandboxes = async () => {
       const userId = localStorage.getItem('userId');
@@ -131,9 +131,11 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <UserProvider>
-        <AppContent />
-      </UserProvider>
+      <ThemeProvider>
+        <UserProvider>
+          <AppContent />
+        </UserProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

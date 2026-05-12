@@ -15,14 +15,13 @@ body {
 
 code {
   font-family: 'Fira Code', monospace;
-
 }
 
 /* Кибер-классы для Tailwind */
 @layer components {
   .cyber-card {
     @apply bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6 
-           hover:border-[#00f0ff] hover:shadow-[0_0_15px_#00f0ff] 
+           hover:border-[#00f0ff] hover:shadow-[0_0_8px_rgba(0,240,255,0.3)] 
            transition-all duration-300;
   }
 
@@ -44,5 +43,22 @@ code {
   .cyber-text-neon {
     @apply text-[#00f0ff] drop-shadow-[0_0_8px_#00f0ff];
   }
+}
 
+/* Светлая тема */
+html:not(.dark) body {
+  background-color: #f0f2f5;
+  color: #1a1a2e;
+}
+
+html:not(.dark) .cyber-card {
+  @apply bg-white border-gray-300 hover:border-[#00f0ff];
+}
+
+html:not(.dark) .cyber-header {
+  @apply bg-gray-100 border-gray-300;
+}
+
+html:not(.dark) .cyber-btn {
+  @apply border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-black;
 }

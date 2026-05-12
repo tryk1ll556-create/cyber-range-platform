@@ -2,9 +2,11 @@ import React from 'react';
 import { challenges } from '../../data/challenges';
 import Spinner from '../common/Spinner';
 import { useUser } from '../../context/UserContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const ChallengesList = ({ onStartSandbox, isLoading }) => {
   const { addXP, addCompletedChallenge } = useUser();
+  const { isDark } = useTheme();
 
   let userName = 'Хакер';
   try {
@@ -26,16 +28,26 @@ const ChallengesList = ({ onStartSandbox, isLoading }) => {
   return (
     <section className="max-w-6xl mx-auto px-4 py-8">
       {/* Баннер-приветствие */}
-      <div className="bg-gradient-to-br from-[#0f1625] via-[#141b2b] to-[#0f1625] border border-[#2a3a5e] rounded-xl p-6 mb-10 text-center shadow-lg">
-        <h2 className="text-2xl md:text-4xl font-bold text-[#00f0ff] tracking-wide mb-2">
+      <div className={`rounded-xl p-6 mb-10 text-center shadow-lg transition-all duration-300 ${
+        isDark 
+          ? 'bg-gradient-to-br from-[#0f1625] via-[#141b2b] to-[#0f1625] border border-[#2a3a5e]' 
+          : 'bg-gradient-to-br from-gray-100 via-white to-gray-100 border border-gray-300'
+      }`}>
+        <h2 className={`text-2xl md:text-4xl font-bold tracking-wide mb-2 ${
+          isDark ? 'text-[#00f0ff]' : 'text-[#0891b2]'
+        }`}>
           Добро пожаловать, {userName}!
         </h2>
-        <p className="text-gray-300 text-sm md:text-base">
+        <p className={`text-sm md:text-base ${
+          isDark ? 'text-gray-300' : 'text-gray-600'
+        }`}>
           Запускай задания → Атакуй песочницы → Повышай уровень
         </p>
       </div>
 
-      <h2 className="text-3xl font-bold text-center mb-8 text-[#00f0ff]">
+      <h2 className={`text-3xl font-bold text-center mb-8 ${
+        isDark ? 'text-[#00f0ff]' : 'text-[#0891b2]'
+      }`}>
         🎯 Доступные задания
       </h2>
 
@@ -43,32 +55,46 @@ const ChallengesList = ({ onStartSandbox, isLoading }) => {
         {challenges.map(challenge => (
           <div
             key={challenge.id}
-            className="bg-[#141b2b] border border-[#2a3a5e] rounded-xl p-6 
-                       hover:border-[#00f0ff] hover:shadow-[0_0_20px_rgba(0,240,255,0.3)] 
-                       transition-all duration-300 flex flex-col"
+            className={`rounded-xl p-6 transition-all duration-300 flex flex-col ${
+              isDark 
+                ? 'bg-[#141b2b] border border-[#2a3a5e] hover:border-[#00f0ff] hover:shadow-[0_0_20px_rgba(0,240,255,0.3)]' 
+                : 'bg-white border border-gray-200 hover:border-[#0891b2] hover:shadow-[0_0_15px_rgba(8,145,178,0.2)]'
+            }`}
           >
             <div className="flex items-center justify-between mb-4">
               <span className="text-4xl">{challenge.icon}</span>
-              <span className="text-xs bg-[#1a2332] border border-[#2a3a5e] px-3 py-1 rounded-full">
+              <span className={`text-xs px-3 py-1 rounded-full ${
+                isDark 
+                  ? 'bg-[#1a2332] border border-[#2a3a5e]' 
+                  : 'bg-gray-100 border border-gray-300 text-gray-600'
+              }`}>
                 {challenge.difficulty}
               </span>
             </div>
 
-            <h3 className="text-xl font-bold text-[#00f0ff] mb-2">{challenge.name}</h3>
-            <p className="text-gray-400 text-sm mb-4 flex-1">{challenge.description}</p>
+            <h3 className={`text-xl font-bold mb-2 ${
+              isDark ? 'text-[#00f0ff]' : 'text-[#0891b2]'
+            }`}>
+              {challenge.name}
+            </h3>
+            <p className={`text-sm mb-4 flex-1 ${
+              isDark ? 'text-gray-400' : 'text-gray-600'
+            }`}>
+              {challenge.description}
+            </p>
 
             <div className="flex items-center justify-between mb-4">
-              <span className="text-yellow-400 font-bold">🏆 {challenge.points} очков</span>
+              <span className="text-yellow-500 font-bold">🏆 {challenge.points} очков</span>
             </div>
 
             <button
               onClick={() => handleStart(challenge.id)}
               disabled={isLoading}
-              className="w-full bg-transparent border-2 border-[#00f0ff] text-[#00f0ff] 
-                         px-4 py-2 rounded-lg font-semibold
-                         hover:bg-[#00f0ff] hover:text-black 
-                         disabled:opacity-50 disabled:cursor-not-allowed
-                         transition-all duration-300 flex items-center justify-center gap-2"
+              className={`w-full px-4 py-2 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
+                isDark
+                  ? 'bg-transparent border-2 border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-black'
+                  : 'bg-[#0891b2] text-white hover:bg-[#0e7c9e] border-none'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {isLoading ? (
                 <>
