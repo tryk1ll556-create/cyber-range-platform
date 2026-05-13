@@ -256,8 +256,14 @@ app.add_middleware(
 
 # ============== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==============
 
-def generate_sandbox_url(sandbox_id: str) -> str:
-    return "http://localhost:8080"
+def generate_sandbox_url(sandbox_id: str, username: str = None) -> str:
+    """
+    Генерация URL для песочницы с передачей имени пользователя в детектор
+    """
+    base_url = "http://localhost:8001/proxy/#"
+    if username:
+        return f"{base_url}?attacker={username}"
+    return base_url
 
 def log_action(db: Session, action: str, user_id: str = None, sandbox_id: str = None, details: str = None):
     """
@@ -444,6 +450,7 @@ def login(username: str, password: str, db: Session = Depends(get_db)):
         "full_name": user.full_name,
         "experience_points": user.experience_points
     }
+
 # ============== УПРАВЛЕНИЕ ПЕСОЧНИЦАМИ ==============
 
 @app.post("/sandboxes", response_model=dict, status_code=201)
@@ -502,22 +509,34 @@ def create_sandbox(sandbox_data: SandboxCreate, owner_id: str = "guest", db: Ses
     return sandbox_dict
 
 @app.post("/sandboxes/{sandbox_id}/start")
-def start_sandbox(sandbox_id: str, db: Session = Depends(get_db)):
+def start_sandbox(
+    sandbox_id: str, 
+    user_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
     """Запуск песочницы"""
     sandbox = db.query(SandboxModel).filter(SandboxModel.id == sandbox_id).first()
     
     if not sandbox:
         raise HTTPException(status_code=404, detail="Песочница не найдена")
     
+    # Получаем username
+    username = None
+    if user_id:
+        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        if user:
+            username = user.username
+            print(f"[INFO] Запуск песочницы пользователем: {username} (ID: {user_id})")
+    
     sandbox.status = "running"
     sandbox.started_at = datetime.now()
-    sandbox.url = generate_sandbox_url(sandbox_id)
+    sandbox.url = generate_sandbox_url(sandbox_id, username)
     sandbox.container_id = f"container_{sandbox_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
     db.commit()
     db.refresh(sandbox)
     
-    log_action(db, "sandbox_started", sandbox.owner_id, sandbox_id, "Песочница запущена")
+    log_action(db, "sandbox_started", sandbox.owner_id, sandbox_id, f"Песочница запущена пользователем {username}")
     
     return {
         "success": True,
@@ -970,17 +989,17 @@ def start_lab(lab_id: str, user_id: str):
     
     # Создаем новую попытку
     attempt_id = str(uuid.uuid4())[:8]
-    new_attempt = LabAttempt(
-        id=attempt_id,
-        user_id=user_id,
-        lab_id=lab_id,
-        sandbox_id=lab_sandbox_id,
-        started_at=datetime.now(),
-        status="in_progress",
-        flags_found=[]
-    )
+    new_attempt = {
+        "id": attempt_id,
+        "user_id": user_id,
+        "lab_id": lab_id,
+        "sandbox_id": lab_sandbox_id,
+        "started_at": datetime.now().isoformat(),
+        "status": "in_progress",
+        "flags_found": []
+    }
     
-    lab_attempts_db.append(new_attempt.dict())
+    lab_attempts_db.append(new_attempt)
     
     return {
         "success": True,
@@ -1052,7 +1071,7 @@ def submit_lab(attempt_id: str, flags: List[str]):
     return {
         "success": True,
         "score": score,
-        "status": attempt["status"],
+        "status": "completed" if score >= 70 else "failed",
         "flags_found": found_flags,
         "total_flags": len(correct_flags),
         "time_spent": time_spent,
@@ -1254,3 +1273,4 @@ if __name__ == "__main__":
     print("🛑 Остановка: Ctrl+C")
     print("=" * 60)
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
