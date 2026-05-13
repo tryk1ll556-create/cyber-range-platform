@@ -16,9 +16,9 @@ export const sandboxService = {
       throw new Error('Не удалось создать песочницу');
     }
     
-    // Запускаем песочницу
-    const startResult = await backendApi.startSandbox(createResult.id);
-    console.log('🔥 Запуск песочницы:', startResult);
+    // Запускаем песочницу с передачей user_id
+    const startResult = await backendApi.startSandbox(createResult.id, userId);
+    console.log('🔥 Запуск песочницы (user_id:', userId, '):', startResult);
     
     return {
       sandbox_id: createResult.id,

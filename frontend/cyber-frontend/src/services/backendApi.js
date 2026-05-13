@@ -28,9 +28,11 @@ export const backendApi = {
     return res.json();
   },
 
-  startSandbox: async (id) => {
+  startSandbox: async (id, userId) => {
     const res = await fetch(`${BACKEND_URL}/sandboxes/${id}/start`, {
-      method: 'POST'
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId })
     });
     if (!res.ok) throw new Error('Ошибка запуска песочницы');
     return res.json();
