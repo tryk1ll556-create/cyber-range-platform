@@ -5,7 +5,8 @@ export const challenges = [
     icon: '🗃️',
     description: 'Найди и эксплуатируй SQL-уязвимости',
     difficulty: '🟢 Начальный',
-    points: 100
+    points: 100,
+    completedCount: 156   // ← добавить
   },
   {
     id: 'xss',
@@ -13,7 +14,8 @@ export const challenges = [
     icon: '⚡',
     description: 'Продемонстрируй межсайтовый скриптинг',
     difficulty: '🟡 Средний',
-    points: 150
+    points: 150,
+    completedCount: 143   // ← добавить
   },
   {
     id: 'rce',
@@ -21,7 +23,8 @@ export const challenges = [
     icon: '💻',
     description: 'Используй уязвимости выполнения кода',
     difficulty: '🔴 Продвинутый',
-    points: 200
+    points: 200,
+    completedCount: 89    // ← добавить
   },
   {
     id: 'path_traversal',
@@ -29,6 +32,7 @@ export const challenges = [
     icon: '📁',
     description: 'Обойди ограничения файловой системы',
     difficulty: '🟡 Средний',
-    points: 175
+    points: 175,
+    completedCount: 98    // ← добавить
   }
 ];
