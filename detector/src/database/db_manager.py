@@ -15,7 +15,7 @@ class DatabaseManager:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Таблица для запросов (ОБНОВЛЕНО - добавлен sandbox_id)
+        # Таблица для запросов
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS requests (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,6 +81,19 @@ class DatabaseManager:
         cursor = conn.cursor()
         
         for detection in detections:
+            # Определяем location из контекста, если не указан
+            location = detection.get('location', 'unknown')
+            if location == 'unknown':
+                # Определяем по типу атаки
+                if detection['type'] in ['PATH_TRAVERSAL', 'POISON_NULL_BYTE']:
+                    location = 'url'
+                elif detection['type'] == 'SQL_INJECTION':
+                    location = 'query'
+                elif detection['type'] == 'XSS':
+                    location = 'body'
+                else:
+                    location = 'unknown'
+            
             cursor.execute('''
                 INSERT INTO detections 
                 (request_id, detection_type, detection_subtype, risk_level, location, pattern, input_sample, confidence)
@@ -90,7 +103,7 @@ class DatabaseManager:
                 detection['type'],
                 detection.get('subtype', 'DIRECT'),
                 detection['risk_level'],
-                detection['location'],
+                location,
                 detection.get('pattern', ''),
                 detection.get('input_sample', ''),
                 detection.get('confidence', 'MEDIUM')
@@ -212,4 +225,4 @@ class DatabaseManager:
 # Тест
 if __name__ == "__main__":
     db = DatabaseManager()
-    print("✅ База данных обновлена с поддержкой sandbox_id!")
+    print("✅ База данных обновлена с поддержкой Poison Null Byte!")

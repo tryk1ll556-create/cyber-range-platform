@@ -87,98 +87,124 @@ function calculateThreatScore(events){
 
     events.forEach(e => {
 
-        if(e.risk === "LOW") score += 1
-        if(e.risk === "MEDIUM") score += 3
-        if(e.risk === "HIGH") score += 6
-        if(e.risk === "CRITICAL") score += 10
+        let risk = e.risk || "LOW"
+        
+        if(risk === "LOW") score += 1
+        if(risk === "MEDIUM") score += 3
+        if(risk === "HIGH") score += 6
+        if(risk === "CRITICAL") score += 10
 
     })
 
     return score
 }
 
-function attackEmoji(type){
-
-    if(type.includes("SQL")) return "💉"
-    if(type.includes("XSS")) return "⚡"
-    if(type.includes("PATH")) return "📂"
+function attackEmoji(detections){
+    let types = detections.join(",")
+    
+    if(types.includes("SQL")) return "💉"
+    if(types.includes("XSS")) return "⚡"
+    if(types.includes("PATH")) return "📂"
+    if(types.includes("POISON_NULL_BYTE")) return "💀"
 
     return "⚠️"
 }
 
+function formatTimestamp(timestamp){
+    if(!timestamp) return "Unknown"
+    let date = new Date(timestamp)
+    return date.toLocaleTimeString()
+}
+
 async function loadStats(){
 
-    let res = await fetch("/stats")
-    let data = await res.json()
+    try {
+        let res = await fetch("/stats")
+        let data = await res.json()
 
-    document.getElementById("stats").innerHTML = `
-    📥 Total Requests: ${data.total_requests}<br>
-    🚨 Detected Attacks: ${data.detected_attacks}<br>
-    💉 SQL Injection: ${data.sql_injections}<br>
-    ⚡ XSS: ${data.xss_attacks}<br>
-    📂 Path Traversal: ${data.path_traversals}
-    `
+        document.getElementById("stats").innerHTML = `
+        📥 Total Requests: ${data.total_requests || 0}<br>
+        🚨 Detected Attacks: ${data.detected_attacks || 0}<br>
+        💉 SQL Injection: ${data.sql_injections || 0}<br>
+        ⚡ XSS: ${data.xss_attacks || 0}<br>
+        📂 Path Traversal: ${data.path_traversals || 0}<br>
+        💀 Poison Null Byte: ${data.null_byte_attacks || 0}
+        `
+    } catch(e) {
+        document.getElementById("stats").innerHTML = "Ошибка загрузки статистики"
+    }
 }
 
 async function loadTimeline(){
 
-    let res = await fetch("/timeline")
-    let events = await res.json()
+    try {
+        let res = await fetch("/timeline")
+        let events = await res.json()
 
-    let feed = document.getElementById("feed")
-    let attackers = {}
+        let feed = document.getElementById("feed")
+        let attackers = {}
 
-    feed.innerHTML=""
+        feed.innerHTML = ""
 
-    events.reverse().forEach(e => {
-
-        let riskClass = e.risk.toLowerCase()
-
-        let emoji = "⚠️"
-
-        if(e.detections.length > 0){
-            emoji = attackEmoji(e.detections[0])
+        if(!events || events.length === 0) {
+            feed.innerHTML = '<div class="feed-item">Атак пока нет</div>'
         }
 
-        feed.innerHTML += `
-        <div class="feed-item">
-        ${emoji} [${e.timestamp}]
-        <b>${e.attacker_id}</b>
-        (${e.ip_address})
-        <br>
-        Agent: ${e.user_agent}
-        <br>
-        <span class="${riskClass}">${e.risk}</span>
-        (${e.detections.join(", ")})
-        </div>
-        `
+        events.forEach(e => {
 
-        if(!attackers[e.attacker_id]){
-            attackers[e.attacker_id] = 0
+            let risk = e.risk || "LOW"
+            let riskClass = risk.toLowerCase()
+            let attackerName = e.attacker_id || e.ip_address || "unknown"
+            let detections = e.detections || []
+            let detectionText = detections.join(", ")
+
+            let emoji = attackEmoji(detections)
+
+            feed.innerHTML += `
+            <div class="feed-item">
+            ${emoji} [${formatTimestamp(e.timestamp)}]
+            <b>${attackerName}</b>
+            (${e.ip_address || "unknown"})
+            <br>
+            <span class="${riskClass}">${risk}</span>
+            (${detectionText})
+            </div>
+            `
+
+            if(!attackers[attackerName]){
+                attackers[attackerName] = 0
+            }
+
+            attackers[attackerName]++
+
+        })
+
+        let attackersDiv = document.getElementById("attackers")
+
+        attackersDiv.innerHTML = ""
+
+        if(Object.keys(attackers).length === 0) {
+            attackersDiv.innerHTML = "Нет атак"
         }
 
-        attackers[e.attacker_id]++
+        Object.entries(attackers)
+            .sort((a,b)=>b[1]-a[1])
+            .slice(0,5)
+            .forEach(a => {
 
-    })
+            attackersDiv.innerHTML += `
+            👤 ${a[0]} — ${a[1]} attacks<br>
+            `
+        })
 
-    let attackersDiv = document.getElementById("attackers")
+        let score = calculateThreatScore(events)
 
-    attackersDiv.innerHTML=""
+        document.getElementById("score").innerText = score
 
-    Object.entries(attackers)
-        .sort((a,b)=>b[1]-a[1])
-        .slice(0,5)
-        .forEach(a => {
-
-        attackersDiv.innerHTML += `
-        👤 ${a[0]} — ${a[1]} attacks<br>
-        `
-    })
-
-    let score = calculateThreatScore(events)
-
-    document.getElementById("score").innerText = score
-
+    } catch(e) {
+        console.error("Error loading timeline:", e)
+        document.getElementById("feed").innerHTML = '<div class="feed-item">Ошибка загрузки</div>'
+    }
 }
 
 async function update(){
@@ -190,7 +216,7 @@ async function update(){
 
 update()
 
-setInterval(update,2000)
+setInterval(update, 3000)
 
 </script>
 

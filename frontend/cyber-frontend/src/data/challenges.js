@@ -6,7 +6,8 @@ export const challenges = [
     description: 'Найди и эксплуатируй SQL-уязвимости',
     difficulty: '🟢 Начальный',
     points: 100,
-    completedCount: 156   // ← добавить
+    completedCount: 156,
+    type: 'sqli'
   },
   {
     id: 'xss',
@@ -15,16 +16,18 @@ export const challenges = [
     description: 'Продемонстрируй межсайтовый скриптинг',
     difficulty: '🟡 Средний',
     points: 150,
-    completedCount: 143   // ← добавить
+    completedCount: 143,
+    type: 'xss'
   },
   {
-    id: 'rce',
-    name: 'RCE',
-    icon: '💻',
-    description: 'Используй уязвимости выполнения кода',
+    id: 'null_byte',
+    name: 'Poison Null Byte',
+    icon: '💉',
+    description: 'Обойди проверки расширения файлов с помощью нуль-байта',
     difficulty: '🔴 Продвинутый',
-    points: 200,
-    completedCount: 89    // ← добавить
+    points: 175,
+    completedCount: 67,
+    type: 'null_byte'
   },
   {
     id: 'path_traversal',
@@ -33,6 +36,7 @@ export const challenges = [
     description: 'Обойди ограничения файловой системы',
     difficulty: '🟡 Средний',
     points: 175,
-    completedCount: 98    // ← добавить
+    completedCount: 98,
+    type: 'path_traversal'
   }
 ];

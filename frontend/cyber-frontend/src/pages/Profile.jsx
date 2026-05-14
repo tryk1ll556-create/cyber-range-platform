@@ -6,41 +6,27 @@ import AttackFeed from '../components/AttackFeed';
 import AchievementsList from '../components/AchievementsList';
 import Settings from '../components/Settings';
 
-// Мок-данные для статистики (если детектор не отвечает)
-const mockStats = {
-  total_requests: 127,
-  detected_attacks: 89,
-  sql_injections: 34,
-  xss_attacks: 28,
-  path_traversals: 15
-};
-
 const Profile = () => {
   const { user, updateUser, resetUser } = useUser();
   const [activeTab, setActiveTab] = useState('profile');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [usingMockStats, setUsingMockStats] = useState(false);
+  const [error, setError] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     return localStorage.getItem('notificationsEnabled') !== 'false';
   });
 
-  // Загрузка статистики с мок-данными
+  // Загрузка статистики из реального детектора
   const loadStats = async () => {
     setLoading(true);
+    setError(false);
     try {
       const data = await detectorApi.getStats();
-      if (data && typeof data.total_requests !== 'undefined') {
-        setStats(data);
-        setUsingMockStats(false);
-      } else {
-        setStats(mockStats);
-        setUsingMockStats(true);
-      }
+      setStats(data);
     } catch (err) {
-      console.warn('Детектор не отвечает, показываем тестовую статистику');
-      setStats(mockStats);
-      setUsingMockStats(true);
+      console.error('Ошибка загрузки статистики:', err);
+      setError(true);
+      setStats(null);
     } finally {
       setLoading(false);
     }
@@ -54,11 +40,11 @@ const Profile = () => {
     }
   }, [activeTab]);
 
-  const progress = Math.round((user.xp / user.nextLevelXp) * 100);
+  const progress = user ? Math.round((user.xp / user.nextLevelXp) * 100) : 0;
 
   const StatCard = ({ label, value }) => (
     <div className="bg-[#1a2332] p-4 rounded-lg border border-[#2a3a5e] text-center">
-      <div className="text-2xl font-bold text-[#00f0ff] mb-1">{value}</div>
+      <div className="text-2xl font-bold text-[#00f0ff] mb-1">{value ?? 0}</div>
       <div className="text-xs text-gray-400">{label}</div>
     </div>
   );
@@ -102,14 +88,14 @@ const Profile = () => {
 
             <div className="text-center md:text-left flex-1 w-full">
               <h1 className="text-2xl md:text-3xl font-bold text-[#00f0ff] drop-shadow-[0_0_8px_#00f0ff] mb-2">
-                {user.name}
+                {user?.name || 'Пользователь'}
               </h1>
-              <p className="text-gray-400 mb-3">{user.email}</p>
+              <p className="text-gray-400 mb-3">{user?.email || ''}</p>
               
               <div className="max-w-md mb-3">
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-[#00f0ff]">Уровень {user.level}</span>
-                  <span className="text-gray-400">{user.xp} / {user.nextLevelXp} XP</span>
+                  <span className="text-[#00f0ff]">Уровень {user?.level || 1}</span>
+                  <span className="text-gray-400">{user?.xp || 0} / {user?.nextLevelXp || 100} XP</span>
                 </div>
                 <div className="w-full h-2 bg-[#1a2332] rounded-full overflow-hidden">
                   <div 
@@ -121,13 +107,13 @@ const Profile = () => {
 
               <div className="flex flex-wrap justify-center md:justify-start gap-2">
                 <span className="bg-[#1a2332] border border-[#2a3a5e] text-xs px-3 py-1 rounded-full">
-                  🏆 {user.rank}
+                  🏆 {user?.rank || 'Новичок'}
                 </span>
                 <span className="bg-[#1a2332] border border-[#2a3a5e] text-xs px-3 py-1 rounded-full">
-                  📊 Уровень {user.level}
+                  📊 Уровень {user?.level || 1}
                 </span>
                 <span className="bg-[#1a2332] border border-[#2a3a5e] text-xs px-3 py-1 rounded-full">
-                  ✅ {user.completedTasks} заданий
+                  ✅ {user?.completedTasks || 0} заданий
                 </span>
               </div>
             </div>
@@ -185,7 +171,7 @@ const Profile = () => {
           {activeTab === 'badges' && (
             <div>
               <h2 className="text-xl font-bold text-[#00f0ff] mb-4">🏅 Мои достижения</h2>
-              {user.badges.length === 0 ? (
+              {!user || user.badges.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">
                   Пока нет достижений. Выполняй задания, чтобы получить их!
                 </div>
@@ -206,14 +192,18 @@ const Profile = () => {
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-[#00f0ff]">📊 Статистика детектора</h2>
-                {usingMockStats && !loading && (
-                  <span className="text-xs bg-yellow-600/30 text-yellow-400 px-2 py-1 rounded">
-                    ⚠️ Демо-режим
+                {error && (
+                  <span className="text-xs bg-red-600/30 text-red-400 px-2 py-1 rounded">
+                    ⚠️ Ошибка подключения
                   </span>
                 )}
               </div>
               {loading ? (
                 <div className="text-center py-8 text-gray-400">Загрузка...</div>
+              ) : error ? (
+                <div className="text-center py-8 text-red-400">
+                  ❌ Не удалось загрузить статистику. Проверь, запущен ли детектор на порту 8001.
+                </div>
               ) : stats ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <StatCard label="Всего запросов" value={stats.total_requests} />
@@ -221,6 +211,7 @@ const Profile = () => {
                   <StatCard label="SQL инъекции" value={stats.sql_injections} />
                   <StatCard label="XSS атаки" value={stats.xss_attacks} />
                   <StatCard label="Path Traversal" value={stats.path_traversals} />
+                  <StatCard label="Poison Null Byte" value={stats.null_byte_attacks} />
                   <StatCard 
                     label="Соотношение атак" 
                     value={`${stats.detected_attacks && stats.total_requests 
@@ -230,12 +221,7 @@ const Profile = () => {
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-400">
-                  ❌ Не удалось загрузить статистику. Проверь, запущен ли детектор на порту 8001.
-                </div>
-              )}
-              {usingMockStats && !loading && (
-                <div className="mt-4 text-xs text-center text-yellow-400">
-                  ⚡ Отображаются тестовые данные. Запусти детектор на порту 8001 для реальной статистики.
+                  Нет данных статистики
                 </div>
               )}
             </div>

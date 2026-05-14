@@ -2,35 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { detectorApi } from '../services/detectorApi';
 import { useTheme } from '../context/ThemeContext';
 
-// Mock-данные для демонстрации, если детектор не отвечает
-const mockEvents = [
-  { timestamp: '14:23:05', attacker_id: '192.168.1.105', ip_address: '192.168.1.105', risk: 'HIGH', detections: ['SQL Injection'] },
-  { timestamp: '14:22:30', attacker_id: '10.0.0.45', ip_address: '10.0.0.45', risk: 'MEDIUM', detections: ['XSS'] },
-  { timestamp: '14:21:15', attacker_id: '192.168.1.200', ip_address: '192.168.1.200', risk: 'LOW', detections: ['Path Traversal'] },
-  { timestamp: '14:20:45', attacker_id: '192.168.1.50', ip_address: '192.168.1.50', risk: 'HIGH', detections: ['SQL Injection', 'XSS'] },
-  { timestamp: '14:19:30', attacker_id: '172.16.0.10', ip_address: '172.16.0.10', risk: 'MEDIUM', detections: ['Command Injection'] },
-];
-
 const AttackFeed = ({ limit = 10 }) => {
   const { isDark } = useTheme();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [usingMock, setUsingMock] = useState(false);
+  const [error, setError] = useState(false);
 
   const loadEvents = async () => {
     try {
       const data = await detectorApi.getTimeline();
-      if (data && data.length > 0) {
-        setEvents(data.slice(-limit).reverse());
-        setUsingMock(false);
-      } else {
-        setEvents(mockEvents);
-        setUsingMock(true);
-      }
+      setEvents(data.slice(-limit).reverse());
+      setError(false);
     } catch (err) {
-      console.warn('Детектор не отвечает, показываем тестовые данные');
-      setEvents(mockEvents);
-      setUsingMock(true);
+      console.error('Ошибка загрузки ленты атак:', err);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -57,24 +42,21 @@ const AttackFeed = ({ limit = 10 }) => {
     </div>
   );
 
+  if (error) return (
+    <div className={`rounded-xl p-4 text-center ${isDark ? 'bg-[#141b2b] text-red-400' : 'bg-white text-red-500'}`}>
+      ❌ Не удалось загрузить ленту атак. Проверь, запущен ли детектор на порту 8001.
+    </div>
+  );
+
   return (
     <div className={`rounded-xl p-4 transition-all duration-300 ${
       isDark 
         ? 'bg-[#141b2b] border border-[#2a3a5e]' 
         : 'bg-white border border-gray-200 shadow-sm'
     }`}>
-      <div className="flex justify-between items-center mb-3">
-        <h3 className={`text-lg font-bold ${isDark ? 'text-[#00f0ff]' : 'text-[#0891b2]'}`}>
-          ⚡ Последние атаки
-        </h3>
-        {usingMock && (
-          <span className={`text-xs px-2 py-1 rounded ${
-            isDark ? 'bg-yellow-600/30 text-yellow-400' : 'bg-yellow-100 text-yellow-700'
-          }`}>
-            ⚠️ Демо-режим
-          </span>
-        )}
-      </div>
+      <h3 className={`text-lg font-bold mb-3 ${isDark ? 'text-[#00f0ff]' : 'text-[#0891b2]'}`}>
+        ⚡ Последние атаки
+      </h3>
 
       {events.length === 0 ? (
         <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
