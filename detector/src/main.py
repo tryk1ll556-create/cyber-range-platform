@@ -55,6 +55,8 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://localhost:8001",
         "http://127.0.0.1:8001",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -72,6 +74,12 @@ templates = Jinja2Templates(directory="templates")
 # =====================================================
 
 UPSTREAM = "http://localhost:8080"
+
+# =====================================================
+# ХРАНИЛИЩЕ ATTACKER ПО IP
+# =====================================================
+
+attacker_sessions: Dict[str, str] = {}
 
 # =====================================================
 # REQUEST MODEL
@@ -130,12 +138,8 @@ class RiskScoringEngine:
 
             max_score = max(max_score, score)
 
-        for level, score in cls.risk_weights.items():
-
-            if score == min(max_score, 4):
-                return level
-
-        return "LOW"
+        risk_map = {1: "LOW", 2: "MEDIUM", 3: "HIGH", 4: "CRITICAL"}
+        return risk_map.get(max_score, "LOW")
 
 # =====================================================
 # DETECTOR
@@ -232,13 +236,14 @@ class CyberRangeDetector:
             detections
         )
 
-        self.timeline.record_event(
-            attacker_id,
-            ip_address,
-            user_agent,
-            detections,
-            overall_risk,
-        )
+        if detections:
+            self.timeline.record_event(
+                attacker_id,
+                ip_address,
+                user_agent,
+                detections,
+                overall_risk,
+            )
 
         return {
             "request_id": request_id,
@@ -252,8 +257,8 @@ class CyberRangeDetector:
     def get_stats(self):
         return self.stats
 
-    def get_timeline(self):
-        return self.timeline.get_timeline()
+    def get_timeline(self, attacks_only: bool = False):
+        return self.timeline.get_timeline(attacks_only=attacks_only)
 
 # =====================================================
 # DETECTOR INSTANCE
@@ -312,13 +317,23 @@ async def proxy_to_sandbox(
     headers = dict(request.headers)
 
     headers.pop("host", None)
-    
-    # Убираем заголовок upgrade, чтобы Juice Shop не пытался делать websocket
     headers.pop("upgrade", None)
     headers.pop("connection", None)
 
-    # КРИТИЧНО
     headers["accept-encoding"] = "identity"
+
+    client_ip = request.client.host
+
+    # Достаём attacker из query_params
+    attacker_id = request.query_params.get("attacker", None)
+    
+    # Если передан — сохраняем в сессию по IP
+    if attacker_id:
+        attacker_sessions[client_ip] = attacker_id
+    
+    # Если не в query — берём из сессии
+    if not attacker_id:
+        attacker_id = attacker_sessions.get(client_ip, None)
 
     try:
 
@@ -364,13 +379,19 @@ async def proxy_to_sandbox(
                 **payload
             }
 
+            final_attacker = (
+                attacker_id
+                or request.headers.get("x-attacker-id")
+                or client_ip
+            )
+
             detector_engine.analyze_request(
                 method=request.method,
                 url=path,
                 params=combined_params,
                 sandbox_id="juice-shop",
-                attacker_id = request.headers.get("x-attacker-id") or request.query_params.get("attacker") or "anonymous",
-                ip_address=request.client.host,
+                attacker_id=final_attacker,
+                ip_address=client_ip,
                 user_agent=headers.get(
                     "user-agent",
                     "unknown"
@@ -423,8 +444,40 @@ def stats():
 
 @app.get("/timeline")
 def timeline():
+    return detector_engine.get_timeline(attacks_only=True)
 
-    return detector_engine.get_timeline()
+# =====================================================
+# LEADERBOARD
+# =====================================================
+
+@app.get("/leaderboard")
+def leaderboard():
+    """Топ пользователей по количеству атак"""
+    events = detector_engine.get_timeline(attacks_only=True)
+
+    stats = {}
+    for event in events:
+        attacker = event["attacker_id"]
+        if attacker not in stats:
+            stats[attacker] = {
+                "attacker_id": attacker,
+                "total_attacks": 0,
+                "attack_types": {},
+                "risks": {"LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0},
+                "last_seen": event["timestamp"],
+            }
+        stats[attacker]["total_attacks"] += 1
+        stats[attacker]["last_seen"] = event["timestamp"]
+        stats[attacker]["risks"][event["risk"]] = stats[attacker]["risks"].get(event["risk"], 0) + 1
+        for det in event["detections"]:
+            stats[attacker]["attack_types"][det] = stats[attacker]["attack_types"].get(det, 0) + 1
+
+    leaderboard_data = sorted(stats.values(), key=lambda x: x["total_attacks"], reverse=True)
+
+    for i, entry in enumerate(leaderboard_data):
+        entry["rank"] = i + 1
+
+    return leaderboard_data
 
 # =====================================================
 # DASHBOARD
@@ -453,6 +506,7 @@ def root():
         "proxy": "/proxy/",
         "dashboard": "/dashboard",
         "timeline": "/timeline",
+        "leaderboard": "/leaderboard",
     }
 
 # =====================================================
@@ -469,6 +523,7 @@ if __name__ == "__main__":
     print(f"🎯 Proxy target: {UPSTREAM}")
     print("📊 Dashboard: http://localhost:8001/dashboard")
     print("📈 Timeline:  http://localhost:8001/timeline")
+    print("🏆 Leaderboard: http://localhost:8001/leaderboard")
     print("🔌 Proxy:     http://localhost:8001/proxy/")
     print("=" * 60)
 
@@ -477,4 +532,3 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8001
     )
-

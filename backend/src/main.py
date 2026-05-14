@@ -257,13 +257,10 @@ app.add_middleware(
 # ============== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==============
 
 def generate_sandbox_url(sandbox_id: str, username: str = None) -> str:
-    """
-    Генерация URL для песочницы с передачей имени пользователя в детектор
-    """
-    base_url = "http://localhost:8001/proxy/#"
+    base_url = "http://localhost:8001/proxy/"
     if username:
-        return f"{base_url}?attacker={username}"
-    return base_url
+        return f"{base_url}?attacker={username}#/"
+    return f"{base_url}#/"
 
 def log_action(db: Session, action: str, user_id: str = None, sandbox_id: str = None, details: str = None):
     """

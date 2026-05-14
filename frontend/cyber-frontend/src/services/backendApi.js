@@ -29,14 +29,15 @@ export const backendApi = {
   },
 
   startSandbox: async (id, userId) => {
-    const res = await fetch(`${BACKEND_URL}/sandboxes/${id}/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId })
+    const url = userId 
+      ? `${BACKEND_URL}/sandboxes/${id}/start?user_id=${userId}`
+      : `${BACKEND_URL}/sandboxes/${id}/start`;
+    const res = await fetch(url, {
+      method: 'POST'
     });
     if (!res.ok) throw new Error('Ошибка запуска песочницы');
     return res.json();
-  },
+},
 
   stopSandbox: async (id) => {
     const res = await fetch(`${BACKEND_URL}/sandboxes/${id}/stop`, {
