@@ -6,7 +6,8 @@ const getChallengeName = (type) => {
     sqli: 'SQL Injection',
     xss: 'XSS Attack',
     rce: 'Remote Code Execution',
-    path_traversal: 'Path Traversal'
+    path_traversal: 'Path Traversal',
+    null_byte: 'Poison Null Byte'
   };
   return names[type] || type;
 };
