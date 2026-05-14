@@ -1,86 +1,158 @@
-from typing import Dict, Any, List, Optional
-
-from detectors.base_detector import BaseDetector
-from detectors.sql_injection import SQLInjectionDetector
-from detectors.xss_detector import XSSDetector
-from detectors.path_traversal import PathTraversalDetector
-from detectors.behavioral_sqli_verifier import BehavioralSQLiVerifier
+import re
+import json
+from typing import List, Dict, Any
 
 
 class DetectionPipeline:
-    """
-    Multi-stage Detection Pipeline:
 
-    1) Signature-based detection
-    2) Behavioral verification
-    3) Risk escalation
-    """
+    # =====================================================
+    # SQL INJECTION
+    # =====================================================
 
-    def __init__(self):
-        self.detectors: List[BaseDetector] = []
-        self.behavioral_verifier = BehavioralSQLiVerifier()
-        self._register_detectors()
+    SQL_PATTERNS = [
+        r"(\%27)|(\')|(\-\-)|(\%23)|(#)",
+        r"(?i)(union(\s)+select)",
+        r"(?i)(or(\s)+1=1)",
+        r"(?i)(drop(\s)+table)",
+        r"(?i)(insert(\s)+into)",
+        r"(?i)(select(\s)+\*)",
+    ]
 
-    def _register_detectors(self):
-        """
-        Автоматическая регистрация детекторов.
-        """
-        self.detectors.append(SQLInjectionDetector())
-        self.detectors.append(XSSDetector())
-        self.detectors.append(PathTraversalDetector())
+    # =====================================================
+    # XSS
+    # =====================================================
+
+    XSS_PATTERNS = [
+        r"(?i)<script.*?>.*?</script>",
+        r"(?i)javascript:",
+        r"(?i)onerror=",
+        r"(?i)onload=",
+        r"(?i)<img.*?>",
+        r"(?i)<svg.*?>",
+    ]
+
+    # =====================================================
+    # PATH TRAVERSAL
+    # =====================================================
+
+    PATH_TRAVERSAL_PATTERNS = [
+        r"\.\./",
+        r"\.\.\\",
+        r"/etc/passwd",
+        r"boot.ini",
+        r"win.ini",
+    ]
+
+    # =====================================================
+    # POISON NULL BYTE
+    # =====================================================
+
+    NULL_BYTE_PATTERNS = [
+        r"%00",
+        r"%2500",
+        r"\x00",
+        r"\0",
+        r"\\0",
+        r"\u0000",
+    ]
+
+    # =====================================================
+    # MAIN ANALYZE METHOD
+    # =====================================================
 
     def analyze(
         self,
         method: str,
         url: str,
-        params: Dict[str, Any],
-        log_file_path: Optional[str] = None,
+        params: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
-        """
-        Запускает multi-stage анализ.
-        """
 
-        all_detections: List[Dict[str, Any]] = []
+        detections = []
 
-        # ==========================
-        # Stage 1: Signature Detection
-        # ==========================
+        payload = json.dumps(
+            {
+                "method": method,
+                "url": url,
+                "params": params
+            },
+            ensure_ascii=False
+        ).lower()
 
-        # Анализ URL
-        for detector in self.detectors:
-            url_detections = detector.detect(url)
-            for detection in url_detections:
-                detection["location"] = "URL"
-                all_detections.append(detection)
+        # =====================================================
+        # SQL INJECTION
+        # =====================================================
 
-        # Анализ параметров
-        for param_name, param_value in params.items():
-            if isinstance(param_value, str):
-                for detector in self.detectors:
-                    param_detections = detector.detect(param_value)
-                    for detection in param_detections:
-                        detection["location"] = f"PARAM_{param_name}"
-                        all_detections.append(detection)
+        for pattern in self.SQL_PATTERNS:
 
-        # ==========================
-        # Stage 2: Behavioral Verification
-        # ==========================
+            if re.search(pattern, payload):
 
-        all_detections = self.behavioral_verifier.enhance_detections(
-            all_detections,
-            log_file_path=log_file_path,
-        )
+                detections.append({
+                    "type": "SQL_INJECTION",
+                    "risk_level": "HIGH",
+                    "pattern": pattern,
+                })
 
-        # ==========================
-        # Stage 3: Correlation Logic
-        # ==========================
+        # =====================================================
+        # XSS
+        # =====================================================
 
-        # Если найдено несколько SQL-инъекций в одном запросе —
-        # усиливаем общий уровень доверия
-        sql_detections = [d for d in all_detections if d["type"] == "SQL_INJECTION"]
+        for pattern in self.XSS_PATTERNS:
 
-        if len(sql_detections) >= 2:
-            for detection in sql_detections:
-                detection["multi_vector"] = True
+            if re.search(pattern, payload):
 
-        return all_detections
+                detections.append({
+                    "type": "XSS",
+                    "risk_level": "HIGH",
+                    "pattern": pattern,
+                })
+
+        # =====================================================
+        # PATH TRAVERSAL
+        # =====================================================
+
+        for pattern in self.PATH_TRAVERSAL_PATTERNS:
+
+            if re.search(pattern, payload):
+
+                detections.append({
+                    "type": "PATH_TRAVERSAL",
+                    "risk_level": "HIGH",
+                    "pattern": pattern,
+                })
+
+        # =====================================================
+        # POISON NULL BYTE
+        # =====================================================
+
+        for pattern in self.NULL_BYTE_PATTERNS:
+
+            if re.search(pattern, payload):
+
+                detections.append({
+                    "type": "POISON_NULL_BYTE",
+                    "risk_level": "CRITICAL",
+                    "pattern": pattern,
+                })
+
+        # =====================================================
+        # REMOVE DUPLICATES
+        # =====================================================
+
+        unique = []
+
+        seen = set()
+
+        for detection in detections:
+
+            key = (
+                detection["type"],
+                detection["pattern"]
+            )
+
+            if key not in seen:
+
+                seen.add(key)
+
+                unique.append(detection)
+
+        return unique

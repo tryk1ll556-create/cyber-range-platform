@@ -257,13 +257,10 @@ app.add_middleware(
 # ============== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==============
 
 def generate_sandbox_url(sandbox_id: str, username: str = None) -> str:
-    """
-    Генерация URL для песочницы с передачей имени пользователя в детектор
-    """
-    base_url = "http://localhost:8001/proxy/#"
+    base_url = "http://localhost:8001/proxy/"
     if username:
-        return f"{base_url}?attacker={username}"
-    return base_url
+        return f"{base_url}?attacker={username}#/"
+    return f"{base_url}#/"
 
 def log_action(db: Session, action: str, user_id: str = None, sandbox_id: str = None, details: str = None):
     """
@@ -548,11 +545,13 @@ def start_sandbox(
 @app.post("/sandboxes/{sandbox_id}/stop")
 def stop_sandbox(sandbox_id: str, db: Session = Depends(get_db)):
     """Остановка песочницы"""
+    
     sandbox = db.query(SandboxModel).filter(SandboxModel.id == sandbox_id).first()
     
     if not sandbox:
         raise HTTPException(status_code=404, detail="Песочница не найдена")
     
+    # Меняем статус на stopped
     sandbox.status = "stopped"
     sandbox.stopped_at = datetime.now()
     
@@ -563,15 +562,18 @@ def stop_sandbox(sandbox_id: str, db: Session = Depends(get_db)):
     return {
         "success": True,
         "sandbox_id": sandbox_id,
-        "status": "stopped"
+        "status": "stopped",
+        "stopped_at": sandbox.stopped_at,
+        "message": "Песочница остановлена"
     }
 
 @app.get("/sandboxes", response_model=List[dict])
 def get_all_sandboxes(db: Session = Depends(get_db)):
-    """Список всех песочниц"""
-    sandboxes = db.query(SandboxModel).all()
-    result = []
+    """Список всех АКТИВНЫХ (запущенных) песочниц"""
+    # Возвращаем ТОЛЬКО запущенные песочницы
+    sandboxes = db.query(SandboxModel).filter(SandboxModel.status == "running").order_by(SandboxModel.started_at.desc()).all()
     
+    result = []
     for s in sandboxes:
         s_dict = {
             "id": s.id,
@@ -589,7 +591,39 @@ def get_all_sandboxes(db: Session = Depends(get_db)):
             "stopped_at": s.stopped_at,
             "owner_id": s.owner_id,
             "vulnerabilities": json.loads(s.vulnerabilities) if s.vulnerabilities else [],
-            "access_count": s.access_count
+            "access_count": s.access_count,
+            "uptime_minutes": int((datetime.now() - s.started_at).total_seconds() // 60) if s.started_at else 0
+        }
+        result.append(s_dict)
+    
+    return result
+
+@app.get("/admin/sandboxes/all", response_model=List[dict])
+def get_all_sandboxes_admin(
+    admin_key: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    АДМИНСКИЙ эндпоинт: получить ВСЕ песочницы (включая остановленные)
+    """
+    if admin_key != "admin_secret_key_2026":
+        raise HTTPException(status_code=403, detail="Доступ только для администраторов")
+    
+    sandboxes = db.query(SandboxModel).order_by(SandboxModel.created_at.desc()).all()
+    
+    result = []
+    for s in sandboxes:
+        s_dict = {
+            "id": s.id,
+            "name": s.name,
+            "description": s.description,
+            "difficulty": s.difficulty,
+            "type": s.type,
+            "status": s.status,
+            "created_at": s.created_at,
+            "started_at": s.started_at,
+            "stopped_at": s.stopped_at,
+            "owner_id": s.owner_id
         }
         result.append(s_dict)
     
@@ -597,11 +631,14 @@ def get_all_sandboxes(db: Session = Depends(get_db)):
 
 @app.get("/sandboxes/{sandbox_id}", response_model=dict)
 def get_sandbox(sandbox_id: str, db: Session = Depends(get_db)):
-    """Получить песочницу по ID"""
-    sandbox = db.query(SandboxModel).filter(SandboxModel.id == sandbox_id).first()
+    """Получить песочницу по ID (только запущенные)"""
+    sandbox = db.query(SandboxModel).filter(
+        SandboxModel.id == sandbox_id,
+        SandboxModel.status == "running"
+    ).first()
     
     if not sandbox:
-        raise HTTPException(status_code=404, detail="Песочница не найдена")
+        raise HTTPException(status_code=404, detail="Песочница не найдена или неактивна")
     
     sandbox.access_count += 1
     db.commit()
@@ -622,7 +659,8 @@ def get_sandbox(sandbox_id: str, db: Session = Depends(get_db)):
         "stopped_at": sandbox.stopped_at,
         "owner_id": sandbox.owner_id,
         "vulnerabilities": json.loads(sandbox.vulnerabilities) if sandbox.vulnerabilities else [],
-        "access_count": sandbox.access_count
+        "access_count": sandbox.access_count,
+        "uptime_minutes": int((datetime.now() - sandbox.started_at).total_seconds() // 60) if sandbox.started_at else 0
     }
     
     return s_dict
@@ -1273,4 +1311,3 @@ if __name__ == "__main__":
     print("🛑 Остановка: Ctrl+C")
     print("=" * 60)
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

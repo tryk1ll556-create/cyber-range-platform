@@ -17,11 +17,45 @@ const Register = () => {
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    
+    // Для username: при вводе сразу фильтруем
+    if (name === 'username') {
+      const englishOnly = /^[a-zA-Z0-9_]*$/;
+      if (englishOnly.test(value) || value === '') {
+        setFormData({ ...formData, [name]: value });
+      }
+      return;
+    }
+    
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Жёсткая проверка: только латиница, цифры, подчёркивание, минимум 3 символа
+    const englishRegex = /^[a-zA-Z0-9_]+$/;
+    if (!formData.username || formData.username.length < 3) {
+      setModal({
+        isOpen: true,
+        title: 'Ошибка',
+        message: 'Имя пользователя должно содержать минимум 3 символа',
+        type: 'error'
+      });
+      return;
+    }
+    
+    if (!englishRegex.test(formData.username)) {
+      setModal({
+        isOpen: true,
+        title: 'Ошибка',
+        message: 'Имя пользователя должно содержать ТОЛЬКО латинские буквы (a-z, A-Z), цифры (0-9) и знак подчёркивания (_). Русские и другие символы запрещены.',
+        type: 'error'
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -68,7 +102,6 @@ const Register = () => {
           : 'bg-white border border-gray-200 shadow-lg'
       }`}>
         
-        {/* Верхняя панель: кнопка назад и переключатель темы */}
         <div className="flex justify-between items-center mb-6">
           <Link to="/" className={`text-sm flex items-center gap-1 transition-all ${
             isDark ? 'text-gray-400 hover:text-[#00f0ff]' : 'text-gray-500 hover:text-[#0891b2]'
@@ -93,7 +126,7 @@ const Register = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className={`block text-sm mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              Имя пользователя *
+              Имя пользователя * (только латиница, цифры, _)
             </label>
             <input
               type="text"
@@ -106,7 +139,11 @@ const Register = () => {
                   ? 'bg-[#1a2332] border border-[#2a3a5e] text-white focus:border-[#00f0ff]'
                   : 'bg-gray-100 border border-gray-300 text-gray-800 focus:border-[#0891b2]'
               }`}
+              placeholder="пример: john_doe_123"
             />
+            <p className={`text-xs mt-1 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+              ⚠️ Только латинские буквы, цифры и знак подчёркивания. Русские и другие символы запрещены!
+            </p>
           </div>
 
           <div>
